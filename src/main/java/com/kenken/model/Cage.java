@@ -100,6 +100,54 @@ public class Cage {
         }
     }
 
+    public boolean checkConstraint(List<Integer> valuesToCheck) {
+        if(valuesToCheck==null || valuesToCheck.isEmpty() || operationType==null || valuesToCheck.size()!=cellsInCage.size()){
+            return false;
+        }
+
+        switch (operationType) {
+            case NONE:
+                return cellsInCage.size() == 1 && valuesToCheck.get(0) == targetValue;
+
+            case ADD: {
+                int sum = 0;
+                for (Integer val : valuesToCheck)
+                    sum += val;
+                return sum == targetValue;
+            }
+
+            case SUB: {
+                if (valuesToCheck.size() != 2)
+                    throw new IllegalArgumentException("La sottrazione non è definita per gabbie con più di due celle");
+                return Math.abs(valuesToCheck.get(0) - valuesToCheck.get(1)) == targetValue;
+            }
+
+            case MUL: {
+                long prod = 1;
+                for (Integer val : valuesToCheck)
+                    prod *= val;
+                return prod == targetValue;
+            }
+
+            case DIV: {
+                if (valuesToCheck.size() != 2)
+                    throw new IllegalArgumentException("La divisione non è definita per gabbie con più di due celle");
+                int v1 = valuesToCheck.get(0), v2 = valuesToCheck.get(1);
+                if (v1 == 0 || v2 == 0) {
+                    throw new IllegalArgumentException("Impossibile eseguire la divisione per zero");
+                } else {
+                    boolean check1 = (v1 > v2) && (v1 % v2 == 0) && (v1 / v2 == targetValue);
+                    boolean check2 = (v2 > v1) && (v2 % v1 == 0) && (v2 / v1 == targetValue);
+                    boolean check3 = (v1 == v2) && targetValue == 1;
+                    return (check1 || check2 || check3);
+                }
+            }
+
+            default:
+                throw new IllegalArgumentException("Operazione non supportata");
+        }
+    }
+
     @Override
     public String toString() {
         return "Cage{" +
