@@ -4,7 +4,6 @@ import com.kenken.model.dto.CageDefinition;
 import com.kenken.model.dto.Coordinates;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -209,7 +208,7 @@ public class GameModel {
         }
         return true;
     }
-    public boolean clearCell(int row, int col){
+    public void clearCell(int row, int col){
         if(this.grid==null || this.N==0)
             throw new IllegalStateException("Il modello non è ancora inizializzato");
 
@@ -222,9 +221,7 @@ public class GameModel {
             cell.clearValue();
             this.gameState=GameState.PLAYING;
             notifyObservers();
-            return true;
         }
-        return false;
     }
 
     public GameStateMemento createMemento(){

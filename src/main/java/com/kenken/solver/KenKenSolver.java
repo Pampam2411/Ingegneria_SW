@@ -5,48 +5,91 @@ import com.kenken.model.Cell;
 import com.kenken.model.Grid;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class KenKenSolver {
-    private Grid workingGrid;
-    private List<Cage> originalCages;
-    private int N;
+    private final Grid workingGrid;
+    private final List<Cage> solverCages;
+    private final int N;
     private List<Grid> solutions; //lista delle soluzioni trovate
     private int maxSolutionsToFind; //numero massimo di soluzioni da trovare
 
-    public KenKenSolver(Grid grid, List<Cage> cages, int N){
-        this.N=N;
-        this.workingGrid=createWorkingGrid(grid,N);
-        this.originalCages =cages;
-    }
+    public KenKenSolver(Grid originalGridFromGame, List<Cage> originalCagesFromGame, int N) {
+        if (originalGridFromGame == null || originalGridFromGame.getSize() != N) {
+            throw new IllegalArgumentException("La griglia originale non può essere nulla o di dimensione diversa da N.");
+        }
+        if (originalCagesFromGame == null) {
+            throw new IllegalArgumentException("La lista delle gabbie originali non può essere nulla.");
+        }
+        this.N = N;
+        this.workingGrid = new Grid(N); // Crea una nuova griglia con le sue nuove celle per il solver.
 
-    //Questo metodo serve a creare una griglia copia per non andare a modificare la griglia originale
-    private Grid createWorkingGrid(Grid grid, int N){
-        Grid copy= new Grid(N);
-        for(int i=0;i<N;i++){
-            for(int j=0;j<N;j++){
-                Cell originalCell=grid.getCell(i,j); //cella griglia originale
-                Cell copyCell=copy.getCell(i,j); //cella griglia copia
-                copyCell.setValue(originalCell.getValue()); // imposto valore cella copia con valore cella originale
-                copyCell.setEditable(originalCell.isEditable()); //imposto editabilità cella copia con editabilità cella originale
+        this.solverCages = new ArrayList<>();
+        Map<Integer, Cage> originalCageIdToSolverCageMap = new HashMap<>();
 
-                copyCell.setParentCage(originalCell.getParentCage());// imposto gabbia cella copia con gabbia cella originale
+        // Crea le istanze di solverCage (vuote per ora) basate sulle originalCagesFromGame.
+        // Mappa gli ID delle gabbie originali alle nuove solverCage.
+        for (Cage originalCage : originalCagesFromGame) {
+            if (originalCage == null) {
+                System.err.println("Attenzione: trovata una Cage nulla nella lista originalCagesFromGame. Sarà ignorata.");
+                continue;
+            }
+            Cage solverCage = new Cage(originalCage.getTargetValue(), originalCage.getOperationType());
+            this.solverCages.add(solverCage);
+            originalCageIdToSolverCageMap.put(originalCage.getCageId(), solverCage);
+        }
+
+        // 2. Popola la workingGrid con i valori e l'editabilità dalla originalGridFromGame.
+        //    Associa ogni cella della workingGrid alla sua solverCage corrispondente.
+        //    Aggiunge le celle della workingGrid alle liste interne delle solverCages.
+        for (int r = 0; r < N; r++) {
+            for (int c = 0; c < N; c++) {
+                Cell cellFromOriginalGrid = originalGridFromGame.getCell(r, c);
+                Cell cellInWorkingGrid = this.workingGrid.getCell(r, c);
+
+                // Copia il valore e l'editabilità.
+                if (!cellFromOriginalGrid.isEditable() || cellFromOriginalGrid.getValue() != 0) {
+
+                    cellInWorkingGrid.setEditable(true);
+                    cellInWorkingGrid.setValue(cellFromOriginalGrid.getValue());
+                    cellInWorkingGrid.setEditable(cellFromOriginalGrid.isEditable()); // Ripristina l'editabilità corretta
+                } else {
+                    // Se la cella originale è editabile e vuota, la cella della workingGrid rimane editabile e vuota.
+                    cellInWorkingGrid.setEditable(cellFromOriginalGrid.isEditable());
+                }
+
+
+                // Collega la cella della workingGrid alla sua solverCage.
+                if (cellFromOriginalGrid.getParentCage() != null) {
+                    Cage originalParentCage = cellFromOriginalGrid.getParentCage();
+                    Cage solverParentCage = originalCageIdToSolverCageMap.get(originalParentCage.getCageId());
+
+                    if (solverParentCage != null) {
+                        solverParentCage.addCell(cellInWorkingGrid);
+                    } else {
+                        // Questo non dovrebbe accadere se originalCagesFromGame è coerente.
+                        System.err.println("Errore critico: Impossibile trovare la solverCage corrispondente per la gabbia originale con ID: "
+                                + originalParentCage.getCageId() + " per la cella (" + r + "," + c + ")");
+                    }
+                }
             }
         }
-        return copy;
     }
 
     public List<Grid> solve(int maxSolutionsToFind){
         this.solutions=new ArrayList<>();
         this.maxSolutionsToFind=maxSolutionsToFind;
         if(this.maxSolutionsToFind==0)return this.solutions;
+        if(this.maxSolutionsToFind<0)this.maxSolutionsToFind=100;
 
         findSolutionRecursive(0,0);
         return this.solutions;
     }
 
     private boolean findSolutionRecursive(int row, int col){
-        if(this.solutions.size()>=this.maxSolutionsToFind && this.maxSolutionsToFind>0) return true;
+        if(this.solutions.size()>=this.maxSolutionsToFind) return true;
 
         Cell nextEmptyCell=findNextEditableEmptyCell(row,col);
 
@@ -61,7 +104,7 @@ public class KenKenSolver {
                     }
                 }
                 this.solutions.add(solutionToAdd);
-                return this.solutions.size()>=this.maxSolutionsToFind && this.maxSolutionsToFind>0; //se abbiamo raggiunto le soluzione return true.
+                return this.solutions.size()>=this.maxSolutionsToFind; //se abbiamo raggiunto le soluzione return true.
             }
             return false;
         }
@@ -126,38 +169,42 @@ public class KenKenSolver {
         //controllo i vincoli della gabbia
         Cage cage=cell.getParentCage();
         if(cage!=null){
-            List<Integer>valuesInCage=new ArrayList<>();//lista dei valori della gabbia
-            int cellEmptyCount=0;
+
+            int originalValue= cell.getValue();
+            boolean wasEditable=cell.isEditable();
+
+            if(!wasEditable)cell.setEditable(true);
+
+            cell.setValue(num);
+
+           boolean allCellsInCageFilled=true;
+
 
             //prendiamo tutte le celle della gabbia e le controlliamo
-            for(Cell cellInCage:cage.getCellsInCage()){
-                //cella corrente della gabbia
-                Cell currentCell=this.workingGrid.getCell(cellInCage.getRow(),cellInCage.getCol());
+            for(Cell cellInCage:cage.getCellsInCage()) {
                 //se è la cella che stiamo aggiungendo allora inseriamo direttamente il valore nella lista
-                if(currentCell.equals(cell)){
-                    valuesInCage.add(num);
-                }
-                //se la cella non è vuota inseriamo il valore nella lista
-                else if(!currentCell.isEmpty()){
-                    valuesInCage.add(currentCell.getValue());
-                }
-                //significa che è una cella vuota quindi incremento il contatore
-                else{
-                    cellEmptyCount++;
+                if (cellInCage.isEmpty()) {
+                    allCellsInCageFilled=false;
+                    break;
                 }
             }
 
-            //controllo se la gabbia è completa di tutti i valori
-            if(cellEmptyCount==0){
-                //controllo se la gabbia è valida
+            if(allCellsInCageFilled){
                 try{
-                    if(!cage.checkConstraint(valuesInCage)){
+                    if(!cage.checkConstraint()){
+                        cell.setValue(originalValue);
+                        if(!wasEditable)cell.setEditable(false);
                         return false;
                     }
                 }catch (IllegalArgumentException e){
+                    cell.setValue(originalValue);
+                    if(!wasEditable)cell.setEditable(false);
                     return false;
                 }
             }
+
+            cell.setValue(originalValue);
+            if(!wasEditable) cell.setEditable(false);
         }
         return true;
     }
@@ -185,25 +232,20 @@ public class KenKenSolver {
         }
 
         //verifico vincoli delle gabbie
-        for(Cage cage:this.originalCages){
-            List<Integer>valuesInCage=new ArrayList<>();
-            for(Cell cell:cage.getCellsInCage()){
-                Cell cellInGrid=this.workingGrid.getCell(cell.getRow(),cell.getCol());
-                if(!cellInGrid.isEmpty()){
-                    valuesInCage.add(cellInGrid.getValue());
-                }else return false;//se c'è una cella vuota nella gabbia return false, anche se si effettua sopra il controllo
-            }
-
-            if(valuesInCage.size()!=cage.getCellsInCage().size())return false;
-
+        for(Cage cage:this.solverCages){
             try{
-                if(!cage.checkConstraint(valuesInCage)){
+                if(!cage.checkConstraint()){
+                    // Se ANCHE SOLO UNA gabbia non soddisfa il vincolo, l'intera soluzione non è valida
                     return false;
                 }
             }catch (IllegalArgumentException e){
+                System.err.println("Eccezione durante checkConstraint per la gabbia " + cage.getCageId() +
+                        " (Target: " + cage.getTargetValue() + cage.getOperationType().getSymbol() +
+                        ", Celle: " + cage.getCellsInCage().size() + "): " + e.getMessage());
                 return false;
             }
         }
         return true;
     }
+
 }
