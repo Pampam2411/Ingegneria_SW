@@ -106,7 +106,7 @@ public class PuzzleGenerator {
             actualCage.add(newCage);
         }
         KenKenSolver solver=new KenKenSolver(puzzleGridToSolve,actualCage, N);
-        List<Grid> solutions=solver.solve(2);
+        List<Grid> solutions=solver.solve(DEFAULT_MAX_GENERATION_ATTEMPTS);
         return new PuzzleVerificationResult(!solutions.isEmpty(),solutions.size()==1,solutions.size());
 
     }
