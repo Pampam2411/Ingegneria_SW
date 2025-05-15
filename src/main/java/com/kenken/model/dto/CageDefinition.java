@@ -15,14 +15,6 @@ public record CageDefinition(int targetValue, OperationType operationType, List<
         Objects.requireNonNull(operationType, "OperationType non può essere nullo in CageDefinition.");
         Objects.requireNonNull(cellsCoordinates, "La lista delle coordinate delle celle non può essere nulla in CageDefinition.");
 
-        // Se una gabbia DEVE avere coordinate, puoi aggiungere questo controllo:
-        // if (cellsCoordinates.isEmpty()) {
-        //     throw new IllegalArgumentException("La lista delle coordinate delle celle non può essere vuota in CageDefinition.");
-        // }
-
-        // Crea una copia difensiva della lista per assicurare l'immutabilità
-        // se la lista passata al costruttore fosse modificabile esternamente.
-        // List.copyOf() restituisce una lista non modificabile.
         cellsCoordinates = List.copyOf(cellsCoordinates);
     }
 }

@@ -20,10 +20,10 @@ import java.util.Set;
 public class GridPanel extends JPanel {
 
     private GameModel gameModel;
-    private GameController gameController;
+    private final GameController gameController;
 
     private int cellSize;
-    private int margin;
+    private final int margin;
     private int offsetX;
     private int offsetY;
 
@@ -70,9 +70,6 @@ public class GridPanel extends JPanel {
 
     public void setModel(GameModel model) {
         this.gameModel = model;
-        // Non resettare selectedCellCoord qui, ma notifica il controller che non c'è selezione
-        // se il modello cambia in modo significativo (es. nuovo gioco).
-        // Il reset della selezione è gestito in resetSelection().
         if (model != null && model.getN() > 0 && getComponentCount() > 0 && getComponent(0) instanceof JLabel) {
             removeAll(); revalidate();
         } else if ((model == null || model.getN() == 0) && getComponentCount() == 0) {
@@ -84,7 +81,7 @@ public class GridPanel extends JPanel {
     public void resetSelection() {
         this.selectedCellCoord = null;
         if (gameController != null) {
-            gameController.setActiveCellFromGrid(null); // Notifica il controller
+            gameController.setActiveCellFromGrid(null);
         }
         repaint();
     }
@@ -140,10 +137,7 @@ public class GridPanel extends JPanel {
                 } else selectedCellCoord = null;
             } else selectedCellCoord = null;
 
-            // Notifica il controller solo se la selezione è cambiata
-            if ( (oldSelection == null && selectedCellCoord != null) ||
-                    (oldSelection != null && !oldSelection.equals(selectedCellCoord)) ||
-                    (oldSelection != null && selectedCellCoord == null) ) {
+            if (oldSelection == null && selectedCellCoord != null || oldSelection != null && !oldSelection.equals(selectedCellCoord)) {
                 if (gameController != null) gameController.setActiveCellFromGrid(selectedCellCoord);
             }
             repaint();
@@ -160,26 +154,21 @@ public class GridPanel extends JPanel {
 
             if (keyCode >= KeyEvent.VK_1 && keyCode <= KeyEvent.VK_0 + N) {
                 number = keyCode - KeyEvent.VK_0;
-                if (keyCode == KeyEvent.VK_0 && N >=10) number = 0;
-                else if (keyCode == KeyEvent.VK_0 && N < 10) return;
-                else if (keyCode > KeyEvent.VK_0 + N && !(N>=10 && number ==0) ) return;
-                if (number >= (N>=10 && number == 0 ? 0 : 1) && number <=N) numberPressed = true;
+                if (keyCode > KeyEvent.VK_0 + N) return;
+                if (number <= N) numberPressed = true;
             } else if (keyCode >= KeyEvent.VK_NUMPAD1 && keyCode <= KeyEvent.VK_NUMPAD0 + N) {
                 number = keyCode - KeyEvent.VK_NUMPAD0;
-                if (keyCode == KeyEvent.VK_NUMPAD0 && N >=10) number = 0;
-                else if (keyCode == KeyEvent.VK_NUMPAD0 && N < 10) return;
-                else if (keyCode > KeyEvent.VK_NUMPAD0 + N && !(N>=10 && number == 0)) return;
-                if (number >= (N>=10 && number == 0 ? 0 : 1) && number <=N) numberPressed = true;
+                if (keyCode > KeyEvent.VK_NUMPAD0 + N) return;
+                if (number <= N) numberPressed = true;
             }
 
             if (numberPressed) {
-                gameController.placeNumberInCell(currentRow, currentCol, number); // Il controller usa la cella selezionata se necessario
-                // repaint(); // Il modello notificherà, causando un repaint generale
+                gameController.placeNumberInCell(currentRow, currentCol, number);
             } else if (keyCode == KeyEvent.VK_BACK_SPACE || keyCode == KeyEvent.VK_DELETE || keyCode == KeyEvent.VK_0 || keyCode == KeyEvent.VK_NUMPAD0) {
                 if (N < 10 && (keyCode == KeyEvent.VK_0 || keyCode == KeyEvent.VK_NUMPAD0)) {
-                    gameController.clearCell(currentRow, currentCol); // repaint();
+                    gameController.clearCell(currentRow, currentCol);
                 } else if (keyCode == KeyEvent.VK_BACK_SPACE || keyCode == KeyEvent.VK_DELETE) {
-                    gameController.clearCell(currentRow, currentCol); // repaint();
+                    gameController.clearCell(currentRow, currentCol);
                 }
             } else {
                 int nextRow = currentRow, nextCol = currentCol; boolean moved = false;
@@ -193,7 +182,7 @@ public class GridPanel extends JPanel {
                     Cell targetCell = gameModel.getCell(nextRow, nextCol);
                     if (targetCell != null && targetCell.isEditable()) {
                         selectedCellCoord = new Coordinates(nextRow, nextCol);
-                        if (gameController != null) gameController.setActiveCellFromGrid(selectedCellCoord); // Notifica il controller
+                        gameController.setActiveCellFromGrid(selectedCellCoord);
                         repaint();
                     }
                 }
@@ -211,7 +200,7 @@ public class GridPanel extends JPanel {
         if (gameModel == null || gameModel.getN() == 0 || cellSize == 0) {
             if (getComponentCount() == 0) {
                 g2d.setColor(Color.DARK_GRAY); g2d.setFont(new Font("Arial", Font.ITALIC, 16));
-                String msg = "Nessuna partita attiva. Configura una nuova partita.";
+                String msg = "No Active Game. Set Up New Game.";
                 FontMetrics fm = g2d.getFontMetrics(); int msgWidth = fm.stringWidth(msg);
                 g2d.drawString(msg, (getWidth() - msgWidth) / 2, getHeight() / 2);
             }
@@ -220,7 +209,7 @@ public class GridPanel extends JPanel {
         int N = gameModel.getN();
         g2d.setColor(GRID_BACKGROUND_COLOR);
         g2d.fillRect(offsetX, offsetY, N * cellSize, N * cellSize);
-        drawCageBackgrounds(g2d, N);
+        drawCageBackgrounds(g2d);
         drawViolatingCellBackgrounds(g2d, N);
         drawCellValues(g2d, N);
         drawGridLines(g2d, N);
@@ -228,9 +217,8 @@ public class GridPanel extends JPanel {
         drawSelectedCellHighlight(g2d);
     }
 
-    private void drawCageBackgrounds(Graphics2D g2d, int N) {
+    private void drawCageBackgrounds(Graphics2D g2d) {
         if (gameModel.getCages() == null || CAGE_BACKGROUND_PALETTE.isEmpty()) return;
-        int cageIndex = 0;
         for (Cage cage : gameModel.getCages()) {
             if (cage.getCellsInCage() == null || cage.getCellsInCage().isEmpty()) continue;
             Color cageColor = CAGE_BACKGROUND_PALETTE.get(cage.getCageId() % CAGE_BACKGROUND_PALETTE.size());
@@ -238,7 +226,6 @@ public class GridPanel extends JPanel {
             for (Cell cellInCage : cage.getCellsInCage()) {
                 g2d.fillRect(offsetX + cellInCage.getCol() * cellSize, offsetY + cellInCage.getRow() * cellSize, cellSize, cellSize);
             }
-            cageIndex++;
         }
     }
 
@@ -290,10 +277,10 @@ public class GridPanel extends JPanel {
             if (cage.getCellsInCage() == null || cage.getCellsInCage().isEmpty()) continue;
             for (Cell cellInCage : cage.getCellsInCage()) {
                 int r = cellInCage.getRow(); int c = cellInCage.getCol();
-                if (r == 0 || !isCellInSameCage(r - 1, c, cage)) g2d.drawLine(offsetX + c * cellSize, offsetY + r * cellSize, offsetX + (c + 1) * cellSize, offsetY + r * cellSize);
-                if (r == N - 1 || !isCellInSameCage(r + 1, c, cage)) g2d.drawLine(offsetX + c * cellSize, offsetY + (r + 1) * cellSize, offsetX + (c + 1) * cellSize, offsetY + (r + 1) * cellSize);
-                if (c == 0 || !isCellInSameCage(r, c - 1, cage)) g2d.drawLine(offsetX + c * cellSize, offsetY + r * cellSize, offsetX + c * cellSize, offsetY + (r + 1) * cellSize);
-                if (c == N - 1 || !isCellInSameCage(r, c + 1, cage)) g2d.drawLine(offsetX + (c + 1) * cellSize, offsetY + r * cellSize, offsetX + (c + 1) * cellSize, offsetY + (r + 1) * cellSize);
+                if (r == 0 || isCellInSameCage(r - 1, c, cage)) g2d.drawLine(offsetX + c * cellSize, offsetY + r * cellSize, offsetX + (c + 1) * cellSize, offsetY + r * cellSize);
+                if (r == N - 1 || isCellInSameCage(r + 1, c, cage)) g2d.drawLine(offsetX + c * cellSize, offsetY + (r + 1) * cellSize, offsetX + (c + 1) * cellSize, offsetY + (r + 1) * cellSize);
+                if (c == 0 || isCellInSameCage(r, c - 1, cage)) g2d.drawLine(offsetX + c * cellSize, offsetY + r * cellSize, offsetX + c * cellSize, offsetY + (r + 1) * cellSize);
+                if (c == N - 1 || isCellInSameCage(r, c + 1, cage)) g2d.drawLine(offsetX + (c + 1) * cellSize, offsetY + r * cellSize, offsetX + (c + 1) * cellSize, offsetY + (r + 1) * cellSize);
             }
             Cell firstCell = null; int minRow = N + 1, minCol = N + 1;
             for(Cell cell : cage.getCellsInCage()){
@@ -310,10 +297,10 @@ public class GridPanel extends JPanel {
     }
 
     private boolean isCellInSameCage(int r, int c, Cage currentCage) {
-        if (gameModel == null || gameModel.getGrid() == null) return false;
-        if (r < 0 || r >= gameModel.getN() || c < 0 || c >= gameModel.getN()) return false;
+        if (gameModel == null || gameModel.getGrid() == null) return true;
+        if (r < 0 || r >= gameModel.getN() || c < 0 || c >= gameModel.getN()) return true;
         Cell otherCell = gameModel.getCell(r, c);
-        return otherCell != null && otherCell.getParentCage() != null && currentCage != null && otherCell.getParentCage().equals(currentCage);
+        return otherCell == null || otherCell.getParentCage() == null || !otherCell.getParentCage().equals(currentCage);
     }
 
     private void drawSelectedCellHighlight(Graphics2D g2d) {

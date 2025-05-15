@@ -41,23 +41,17 @@ public class KenKenSolver {
             originalCageIdToSolverCageMap.put(originalCage.getCageId(), solverCage);
         }
 
-        // 2. Popola la workingGrid con i valori e l'editabilità dalla originalGridFromGame.
-        //    Associa ogni cella della workingGrid alla sua solverCage corrispondente.
-        //    Aggiunge le celle della workingGrid alle liste interne delle solverCages.
+        //  Popola la workingGrid con i valori e l'editabilità dalla originalGridFromGame.
+        //  Associa ogni cella della workingGrid alla sua solverCage corrispondente.
+        //  Aggiunge le celle della workingGrid alle liste interne delle solverCages.
         for (int r = 0; r < N; r++) {
             for (int c = 0; c < N; c++) {
                 Cell cellFromOriginalGrid = originalGridFromGame.getCell(r, c);
                 Cell cellInWorkingGrid = this.workingGrid.getCell(r, c);
 
-                // Copia il valore e l'editabilità.
-                if (!cellFromOriginalGrid.isEditable() || cellFromOriginalGrid.getValue() != 0) {
-
-                    cellInWorkingGrid.setEditable(true);
+                if(!cellFromOriginalGrid.isEditable()){
                     cellInWorkingGrid.setValue(cellFromOriginalGrid.getValue());
-                    cellInWorkingGrid.setEditable(cellFromOriginalGrid.isEditable()); // Ripristina l'editabilità corretta
-                } else {
-                    // Se la cella originale è editabile e vuota, la cella della workingGrid rimane editabile e vuota.
-                    cellInWorkingGrid.setEditable(cellFromOriginalGrid.isEditable());
+                    cellInWorkingGrid.setEditable(false);
                 }
 
 
@@ -136,7 +130,6 @@ public class KenKenSolver {
         return false;
     }
 
-    //trova la prossima cella vuota che è editabile.
     private Cell findNextEditableEmptyCell(int startRow, int startCol) {
         for(int r=startRow;r<this.N;r++){
             //se sono in una riga diversa da quella iniziale devo inziare dalla colonna 0, altrimenti potrei saltare delle colonne
@@ -152,7 +145,6 @@ public class KenKenSolver {
         return null;
     }
 
-    //verifica se il numero è valido per essere inserito nella cella specificata.
     private boolean isValidPlacement(Cell cell, int num){
         for(int c=0;c<this.N;c++){
             if(this.workingGrid.getCell(cell.getRow(),c).getValue()==num) {
@@ -209,7 +201,6 @@ public class KenKenSolver {
         return true;
     }
 
-    //verifica se la griglia è valida.
     private boolean isCurrentGridSolutionValid() {
         //controllo unicità riga e colonna della griglia completa
         for(int i=0;i<this.N;i++){

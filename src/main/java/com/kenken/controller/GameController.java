@@ -15,21 +15,21 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.List;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
 
 public class GameController {
 
-    private GameModel gameModel;
-    private PuzzleGenerator puzzleGenerator;
-    private UserFeedback userFeedback;
+    private final GameModel gameModel;
+    private final PuzzleGenerator puzzleGenerator;
+    private final UserFeedback userFeedback;
     private List<Grid> foundSolutions;
     private int currentSolutionIndex;
     private static final int DEFAULT_MAX_SOLUTIONS_TO_FIND = 100;
 
-    private Coordinates currentlySelectedCellInGrid; // Nuovo: per la cella selezionata dalla GridPanel
+    private Coordinates currentlySelectedCellInGrid;
 
     public GameController(GameModel model, UserFeedback feedback) {
         this.gameModel = model;
@@ -40,24 +40,11 @@ public class GameController {
         this.currentlySelectedCellInGrid = null;
     }
 
-    /**
-     * Chiamato da GridPanel quando una cella viene selezionata (o deselezionata con null).
-     * @param coord Le coordinate della cella selezionata, o null se nessuna.
-     */
     public void setActiveCellFromGrid(Coordinates coord) {
         this.currentlySelectedCellInGrid = coord;
         System.out.println("GameController: Cella attiva impostata a: " + (coord != null ? coord.toString() : "null"));
-        // Notifica la UI (es. NumberInputPanel) per abilitare/disabilitare i pulsanti
-        // Questo può essere fatto tramite l'observer pattern del GameModel se lo stato della cella selezionata
-        // viene messo nel modello, o il MainFrame può passare questo stato al NumberInputPanel.
-        // Per ora, il NumberInputPanel si abiliterà se N > 0.
-        // Una notifica esplicita potrebbe essere gameModel.notifyObservers() se lo stato della selezione fosse nel modello.
     }
 
-    /**
-     * Chiamato da NumberInputPanel quando un pulsante numerico viene premuto.
-     * @param number Il numero da inserire.
-     */
     public void inputNumberViaButton(int number) {
         if (currentlySelectedCellInGrid != null) {
             System.out.println("GameController: Input da pulsante: " + number + " per cella " + currentlySelectedCellInGrid);
@@ -70,9 +57,6 @@ public class GameController {
         }
     }
 
-    /**
-     * Chiamato da NumberInputPanel quando il pulsante "Cancella" (o 0) viene premuto.
-     */
     public void clearNumberViaButton() {
         if (currentlySelectedCellInGrid != null) {
             System.out.println("GameController: Cancellazione da pulsante per cella " + currentlySelectedCellInGrid);
@@ -84,7 +68,6 @@ public class GameController {
             System.out.println("GameController: Cancellazione da pulsante ignorata, nessuna cella selezionata.");
         }
     }
-
 
     public void startNewGame(int N, String difficulty) {
         System.out.println("GameController: Avvio nuova partita N=" + N + ", Difficoltà=" + difficulty);
@@ -111,21 +94,14 @@ public class GameController {
         }
     }
 
-    // ... (metodi solvePuzzle, displaySolutionAtIndex, showNext/PreviousSolution, canShowNext/PreviousSolution,
-    //      getCurrentSolutionIndex, getTotalSolutionsFound, clearFoundSolutions,
-    //      placeNumberInCell, clearCell, setRealTimeValidation, saveGame, loadGame, validateCurrentGrid
-    //      rimangono come nell'artefatto "game_controller_save_load_fs" o la tua versione più recente)
-    //      Assicurati che placeNumberInCell e clearCell gestiscano correttamente le eccezioni e
-    //      che il feedback all'utente sia dato se l'azione non è permessa.
-
     public void solvePuzzle() {
         System.out.println("GameController: Richiesta Risoluzione Puzzle.");
         if (gameModel.getGameState() == GameModel.GameState.NOT_INITIALIZED || gameModel.getN() == 0) {
-            if (userFeedback != null) userFeedback.showErrorMessage("Errore Risoluzione", "Nessuna partita attiva da risolvere.");
+            if (userFeedback != null) userFeedback.showErrorMessage("Error", "No active game to resolve.");
             return;
         }
         clearFoundSolutions();
-        setActiveCellFromGrid(null); // Deseleziona cella quando si mostra soluzione
+        setActiveCellFromGrid(null);
         KenKenSolver solver = new KenKenSolver(gameModel.getGrid(), gameModel.getCages(), gameModel.getN());
         System.out.println("GameController: Avvio KenKenSolver per trovare max " + DEFAULT_MAX_SOLUTIONS_TO_FIND + " soluzioni...");
         this.foundSolutions = solver.solve(DEFAULT_MAX_SOLUTIONS_TO_FIND);
@@ -133,13 +109,13 @@ public class GameController {
         if (this.foundSolutions != null && !this.foundSolutions.isEmpty()) {
             this.currentSolutionIndex = 0;
             displaySolutionAtIndex(this.currentSolutionIndex);
-            String msg = "Trovata/e " + this.foundSolutions.size() + " soluzione/i. Mostrando la prima.";
+            String msg = "Found " + this.foundSolutions.size() + " solution.";
             if (this.foundSolutions.size() > 1) {
-                msg += "\nUsa i comandi di navigazione soluzione.";
+                msg += "\nUse browse command to show all solutions.";
             }
-            if (userFeedback != null) userFeedback.showInfoMessage("Risoluzione Puzzle", msg);
+            if (userFeedback != null) userFeedback.showInfoMessage("Solve Puzzle", msg);
         } else {
-            if (userFeedback != null) userFeedback.showErrorMessage("Risoluzione Puzzle", "Nessuna soluzione trovata.");
+            if (userFeedback != null) userFeedback.showErrorMessage("Solve Puzzle", "Not found any solution.");
         }
         gameModel.notifyObservers();
     }
@@ -157,10 +133,7 @@ public class GameController {
         if (canShowNextSolution()) {
             currentSolutionIndex++;
             displaySolutionAtIndex(currentSolutionIndex);
-            if (userFeedback != null) userFeedback.showInfoMessage("Navigazione Soluzioni", "Mostrando soluzione " + (currentSolutionIndex + 1) + " di " + foundSolutions.size() + ".");
             gameModel.notifyObservers();
-        } else {
-            if (userFeedback != null) userFeedback.showInfoMessage("Navigazione Soluzioni", "Sei già all'ultima soluzione.");
         }
     }
 
@@ -168,16 +141,22 @@ public class GameController {
         if (canShowPreviousSolution()) {
             currentSolutionIndex--;
             displaySolutionAtIndex(currentSolutionIndex);
-            if (userFeedback != null) userFeedback.showInfoMessage("Navigazione Soluzioni", "Mostrando soluzione " + (currentSolutionIndex + 1) + " di " + foundSolutions.size() + ".");
             gameModel.notifyObservers();
-        } else {
-            if (userFeedback != null) userFeedback.showInfoMessage("Navigazione Soluzioni", "Sei già alla prima soluzione.");
         }
     }
-    public boolean canShowNextSolution() { return foundSolutions != null && currentSolutionIndex < foundSolutions.size() - 1; }
-    public boolean canShowPreviousSolution() { return foundSolutions != null && currentSolutionIndex > 0; }
-    public int getCurrentSolutionIndex() { return currentSolutionIndex; }
-    public int getTotalSolutionsFound() { return foundSolutions != null ? foundSolutions.size() : 0; }
+
+    public boolean canShowNextSolution() {
+        return foundSolutions != null && currentSolutionIndex < foundSolutions.size() - 1; }
+
+    public boolean canShowPreviousSolution() {
+        return foundSolutions != null && currentSolutionIndex > 0; }
+
+    public int getCurrentSolutionIndex() {
+        return currentSolutionIndex; }
+
+    public int getTotalSolutionsFound() {
+        return foundSolutions != null ? foundSolutions.size() : 0; }
+
     public void clearFoundSolutions() {
         if (this.foundSolutions != null) this.foundSolutions.clear();
         this.currentSolutionIndex = -1;
@@ -187,57 +166,48 @@ public class GameController {
     public void placeNumberInCell(int row, int col, int value) {
         if (gameModel.getGameState() == GameModel.GameState.PLAYING || gameModel.getGameState() == GameModel.GameState.CONSTRAINT_VIOLATION) {
             try { gameModel.placeNumber(row, col, value); }
-            catch (IllegalArgumentException e) { if (userFeedback != null) userFeedback.showErrorMessage("Input Non Valido", "Valore '" + value + "' non valido.\nInserisci un numero tra 1 e " + gameModel.getN() + "."); }
-            catch (IllegalStateException e) { if (userFeedback != null) userFeedback.showErrorMessage("Azione Non Permessa", "La cella (" + (row + 1) + "," + (col + 1) + ") non è modificabile."); }
-        } else { if (userFeedback != null) userFeedback.showInfoMessage("Azione Non Permessa", "Non è possibile inserire numeri ora. Stato gioco: " + gameModel.getGameState()); }
+            catch (IllegalArgumentException e) { if (userFeedback != null) userFeedback.showErrorMessage("Invalid Input", "Value '" + value + "' invalid.\nEnter a number between 1 and " + gameModel.getN() + "."); }
+            catch (IllegalStateException e) { if (userFeedback != null) userFeedback.showErrorMessage("Action Allowed", "Cells (" + (row + 1) + "," + (col + 1) + ") it not editable."); }
+        } else { if (userFeedback != null) userFeedback.showInfoMessage("Action Allowed", "It is not possible to enter numbers now. Game status: " + gameModel.getGameState()); }
     }
+
     public void clearCell(int row, int col) {
         if (gameModel.getGameState() == GameModel.GameState.PLAYING || gameModel.getGameState() == GameModel.GameState.CONSTRAINT_VIOLATION) {
             try { gameModel.clearCell(row, col); }
-            catch (IllegalStateException e) { if (userFeedback != null) userFeedback.showErrorMessage("Azione Non Permessa", "La cella (" + (row + 1) + "," + (col + 1) + ") non è modificabile."); }
-        } else { if (userFeedback != null) userFeedback.showInfoMessage("Azione Non Permessa", "Non è possibile cancellare numeri ora. Stato gioco: " + gameModel.getGameState());}
+            catch (IllegalStateException e) { if (userFeedback != null) userFeedback.showErrorMessage("Action Allowed", "Cells (" + (row + 1) + "," + (col + 1) + ") it not editable."); }
+        } else { if (userFeedback != null) userFeedback.showInfoMessage("Action Allowed", "It is not possible to enter numbers now. Game status " + gameModel.getGameState());}
     }
+
     public void setRealTimeValidation(boolean enabled) {
         gameModel.setRealTimeValidationEnabled(enabled);
-        if (userFeedback != null) userFeedback.showInfoMessage("Validazione", "Validazione in tempo reale " + (enabled ? "ATTIVATA" : "DISATTIVATA") + ".");
+        if (userFeedback != null) userFeedback.showInfoMessage("Validation", "Validation realtime " + (enabled ? "Active" : "Deactivated") + ".");
     }
+
     public void saveGame(File file) {
         if (file == null || gameModel.getGameState() == GameModel.GameState.NOT_INITIALIZED || gameModel.getN() == 0) {
-            if (userFeedback != null) userFeedback.showErrorMessage("Salva Partita", "Nessuna partita attiva da salvare o file non specificato.");
+            if (userFeedback != null) userFeedback.showErrorMessage("Save Game", "No active game to save or file not specified");
             return;
         }
         GameStateMemento memento = gameModel.createMemento();
-        if (memento == null) { if (userFeedback != null) userFeedback.showErrorMessage("Errore Salvataggio", "Impossibile creare stato da salvare."); return; }
+        if (memento == null) { if (userFeedback != null) userFeedback.showErrorMessage("Save Error", "Unable to create state to save."); return; }
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
             oos.writeObject(memento);
-            if (userFeedback != null) userFeedback.showInfoMessage("Salvataggio Completato", "Partita salvata in:\n" + file.getName());
-        } catch (IOException e) { if (userFeedback != null) userFeedback.showErrorMessage("Errore Salvataggio", "Errore I/O:\n" + e.getMessage()); e.printStackTrace(); }
+            if (userFeedback != null) userFeedback.showInfoMessage("Save Completed", "Game save in:\n" + file.getName());
+        } catch (IOException e) { if (userFeedback != null) userFeedback.showErrorMessage("Save Error", "Error I/O:\n" + e.getMessage());}
     }
+
     public boolean loadGame(File file) {
-        if (file == null) { if (userFeedback != null) userFeedback.showErrorMessage("Errore Caricamento", "File non specificato."); return false; }
+        if (file == null) { if (userFeedback != null) userFeedback.showErrorMessage("Load Error", "File not specified."); return false; }
         clearFoundSolutions(); setActiveCellFromGrid(null);
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
             Object loadedObject = ois.readObject();
             if (loadedObject instanceof GameStateMemento) {
                 gameModel.restoreFromMemento((GameStateMemento) loadedObject);
-                if (userFeedback != null) userFeedback.showInfoMessage("Caricamento Completato", "Partita caricata da:\n" + file.getName());
+                if (userFeedback != null) userFeedback.showInfoMessage("Load Completed", "Load game from:\n" + file.getName());
                 return true;
-            } else { if (userFeedback != null) userFeedback.showErrorMessage("Errore Caricamento", "File non valido (tipo oggetto errato)."); return false; }
-        } catch (IOException e) { if (userFeedback != null) userFeedback.showErrorMessage("Errore Caricamento", "Errore I/O:\n" + e.getMessage()); e.printStackTrace(); return false;
-        } catch (ClassNotFoundException e) { if (userFeedback != null) userFeedback.showErrorMessage("Errore Caricamento", "Formato file non compatibile."); e.printStackTrace(); return false;
-        } catch (Exception e) { if (userFeedback != null) userFeedback.showErrorMessage("Errore Caricamento", "Errore imprevisto:\n" + e.getMessage()); e.printStackTrace(); return false; }
-    }
-    public void validateCurrentGrid() {
-        if (gameModel.getGameState() == GameModel.GameState.NOT_INITIALIZED || gameModel.getN() == 0) {
-            if (userFeedback != null) userFeedback.showErrorMessage("Errore Validazione", "Nessuna partita attiva da validare."); return;
-        }
-        boolean isSolved = gameModel.isGameEffectivelySolved(); // Questo potrebbe cambiare lo stato interno del modello
-        if (isSolved) {
-            if (userFeedback != null) userFeedback.showInfoMessage("Validazione", "Congratulazioni! La soluzione è corretta.");
-        } else {
-            boolean allFilled = true; if (gameModel.getGrid() != null) { for (int r = 0; r < gameModel.getN(); r++) { for (int c = 0; c < gameModel.getN(); c++) { if (gameModel.getCell(r, c).isEmpty()) { allFilled = false; break; } } if (!allFilled) break; } } else allFilled = false;
-            if (allFilled) { if (userFeedback != null) userFeedback.showErrorMessage("Validazione", "Griglia completa, ma soluzione non corretta."); }
-            else { if (userFeedback != null) userFeedback.showInfoMessage("Validazione", "La griglia non è ancora completa."); }
-        }
+            } else { if (userFeedback != null) userFeedback.showErrorMessage("Error Load", "File not valid (error object type)."); return false; }
+        } catch (IOException e) { if (userFeedback != null) userFeedback.showErrorMessage("Method…", "Error I/O:\n" + e.getMessage()); return false;
+        } catch (ClassNotFoundException e) { if (userFeedback != null) userFeedback.showErrorMessage("Method…", "Incompatible file format."); return false;
+        } catch (Exception e) { if (userFeedback != null) userFeedback.showErrorMessage("Method…", "Unexpected error:\n" + e.getMessage()); return false; }
     }
 }

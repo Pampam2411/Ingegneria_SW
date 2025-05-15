@@ -6,20 +6,16 @@ import com.kenken.model.GameModel;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ItemEvent;
-
-public class RightGameControlsPanel extends JPanel { // Rinominato per chiarezza
+public class RightGameControlsPanel extends JPanel {
 
     private GameController gameController;
     private GameModel gameModel;
 
-    private JButton solveButton;
-    private JButton validateButton;
-    private JToggleButton realTimeValidationToggleButton;
-    private JButton previousSolutionButton; // Nuovo
-    private JButton nextSolutionButton;     // Nuovo
-    private JLabel solutionNavigationLabel; // Nuovo
+    private final JButton solveButton;
+    private final JToggleButton realTimeValidationToggleButton;
+    private final JButton previousSolutionButton;
+    private final JButton nextSolutionButton;
+    private final JLabel solutionNavigationLabel;
 
     public RightGameControlsPanel(GameController controller, GameModel model) {
         this.gameController = controller;
@@ -32,29 +28,24 @@ public class RightGameControlsPanel extends JPanel { // Rinominato per chiarezza
         ));
         setBackground(new Color(220, 225, 230));
 
-        JLabel titleLabel = new JLabel("Azioni Gioco");
+        JLabel titleLabel = new JLabel("Action Game");
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         add(titleLabel);
         add(Box.createRigidArea(new Dimension(0, 15)));
 
-        solveButton = new JButton("Risolvi Puzzle");
+        solveButton = new JButton("Solve Puzzle");
         styleControlButton(solveButton);
-        solveButton.addActionListener(e -> { if (gameController != null) gameController.solvePuzzle(); });
+        solveButton.addActionListener(_ -> { if (gameController != null) gameController.solvePuzzle(); });
         add(solveButton);
         add(Box.createRigidArea(new Dimension(0, 10)));
 
-        validateButton = new JButton("Valida Soluzione");
-        styleControlButton(validateButton);
-        validateButton.addActionListener(e -> { if (gameController != null) gameController.validateCurrentGrid(); });
-        add(validateButton);
-        add(Box.createRigidArea(new Dimension(0, 15)));
 
         realTimeValidationToggleButton = new JToggleButton();
         styleToggleButton(realTimeValidationToggleButton);
         realTimeValidationToggleButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         if (this.gameModel != null) updateToggleButtonState(this.gameModel.isRealTimeValidationEnabled());
-        realTimeValidationToggleButton.addActionListener(e -> {
+        realTimeValidationToggleButton.addActionListener(_ -> {
             if (gameController != null && gameModel != null) {
                 boolean newSelectedState = realTimeValidationToggleButton.isSelected();
                 if (gameModel.isRealTimeValidationEnabled() != newSelectedState) {
@@ -63,10 +54,10 @@ public class RightGameControlsPanel extends JPanel { // Rinominato per chiarezza
             }
         });
         add(realTimeValidationToggleButton);
-        add(Box.createRigidArea(new Dimension(0, 20))); // Spazio prima della navigazione
+        add(Box.createRigidArea(new Dimension(0, 20)));
 
-        // Controlli di Navigazione Soluzione
-        solutionNavigationLabel = new JLabel("Naviga Soluzioni:");
+
+        solutionNavigationLabel = new JLabel("Browse Solution:");
         solutionNavigationLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
         solutionNavigationLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         add(solutionNavigationLabel);
@@ -75,21 +66,21 @@ public class RightGameControlsPanel extends JPanel { // Rinominato per chiarezza
         JPanel navButtonContainer = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
         navButtonContainer.setOpaque(false);
 
-        previousSolutionButton = new JButton("< Prec");
+        previousSolutionButton = new JButton("< Prev");
         styleNavigationButton(previousSolutionButton);
-        previousSolutionButton.addActionListener(e -> { if (gameController != null) gameController.showPreviousSolution(); });
+        previousSolutionButton.addActionListener(_ -> { if (gameController != null) gameController.showPreviousSolution(); });
         navButtonContainer.add(previousSolutionButton);
 
-        nextSolutionButton = new JButton("Succ >");
+        nextSolutionButton = new JButton("Next >");
         styleNavigationButton(nextSolutionButton);
-        nextSolutionButton.addActionListener(e -> { if (gameController != null) gameController.showNextSolution(); });
+        nextSolutionButton.addActionListener(_ -> { if (gameController != null) gameController.showNextSolution(); });
         navButtonContainer.add(nextSolutionButton);
         add(navButtonContainer);
 
 
-        add(Box.createVerticalGlue()); // Spinge i controlli in alto
+        add(Box.createVerticalGlue());
 
-        setPreferredSize(new Dimension(180, 320)); // Aggiusta altezza
+        setPreferredSize(new Dimension(180, 320));
         setMaximumSize(new Dimension(190, Short.MAX_VALUE));
     }
 
@@ -116,7 +107,7 @@ public class RightGameControlsPanel extends JPanel { // Rinominato per chiarezza
     private void updateToggleButtonState(boolean isValidationEnabled) {
         if (realTimeValidationToggleButton != null) {
             realTimeValidationToggleButton.setSelected(isValidationEnabled);
-            realTimeValidationToggleButton.setText(isValidationEnabled ? "Validazione: ATTIVA" : "Validazione: DISATTIVA");
+            realTimeValidationToggleButton.setText(isValidationEnabled ? "Validation:Active" : "Validation:Deactivate");
         }
     }
 
@@ -127,19 +118,14 @@ public class RightGameControlsPanel extends JPanel { // Rinominato per chiarezza
         boolean isGameActiveOrInitialized = (model.getGameState() != GameModel.GameState.NOT_INITIALIZED &&
                 model.getGameState() != GameModel.GameState.ERROR &&
                 model.getN() > 0);
-        boolean isGamePlaying = isGameActiveOrInitialized &&
-                (model.getGameState() == GameModel.GameState.PLAYING ||
-                        model.getGameState() == GameModel.GameState.CONSTRAINT_VIOLATION);
         boolean isGameSolved = model.getGameState() == GameModel.GameState.SOLVED;
 
         if (solveButton != null) solveButton.setEnabled(isGameActiveOrInitialized && !isGameSolved);
-        if (validateButton != null) validateButton.setEnabled(isGamePlaying);
         if (realTimeValidationToggleButton != null) {
             realTimeValidationToggleButton.setEnabled(isGameActiveOrInitialized);
             updateToggleButtonState(model.isRealTimeValidationEnabled());
         }
 
-        // Aggiorna stato e visibilità dei pulsanti di navigazione soluzione
         boolean solutionsAvailableAndDisplayed = false;
         if (controller != null) {
             int totalSolutions = controller.getTotalSolutionsFound();
@@ -149,11 +135,11 @@ public class RightGameControlsPanel extends JPanel { // Rinominato per chiarezza
         if (solutionNavigationLabel != null) solutionNavigationLabel.setVisible(solutionsAvailableAndDisplayed);
         if (previousSolutionButton != null) {
             previousSolutionButton.setVisible(solutionsAvailableAndDisplayed);
-            previousSolutionButton.setEnabled(solutionsAvailableAndDisplayed && controller != null && controller.canShowPreviousSolution());
+            previousSolutionButton.setEnabled(solutionsAvailableAndDisplayed && controller.canShowPreviousSolution());
         }
         if (nextSolutionButton != null) {
             nextSolutionButton.setVisible(solutionsAvailableAndDisplayed);
-            nextSolutionButton.setEnabled(solutionsAvailableAndDisplayed && controller != null && controller.canShowNextSolution());
+            nextSolutionButton.setEnabled(solutionsAvailableAndDisplayed && controller.canShowNextSolution());
         }
     }
 }

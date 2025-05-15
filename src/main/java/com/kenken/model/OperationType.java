@@ -5,7 +5,7 @@ public enum OperationType {
 
     private final String symbol;
 
-    private OperationType(String symbol){
+    OperationType(String symbol){
         this.symbol = symbol;
     }
 

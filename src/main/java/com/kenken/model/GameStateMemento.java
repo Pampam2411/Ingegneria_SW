@@ -6,9 +6,6 @@ import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
 
-/*
- * Memento: contiene lo stato di GameModel da salvare/ripristinare.
- */
 public record GameStateMemento(
         int N,
         List<CageDefinition> cageDefinitions, // le definizioni delle gabbie

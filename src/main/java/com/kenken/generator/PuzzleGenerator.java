@@ -30,7 +30,7 @@ public class PuzzleGenerator {
                 throw new IllegalArgumentException("La difficoltà non può essere nulla o vuota");
 
             String normalizedDifficulty =difficulty.trim().toUpperCase(); //serve a far matchare la stringa se fosse scritta in minuscolo
-           switch (normalizedDifficulty){
+            switch (normalizedDifficulty){
                 case DIFFICULTY_EASY:
                     return EASY_OPERATIONS;
                 case DIFFICULTY_MEDIUM:
@@ -69,11 +69,12 @@ public class PuzzleGenerator {
         //Generazione massimo 100 griglie soluzione tipo Sudoku
         for(int attemp=1;attemp<=DEFAULT_MAX_GENERATION_ATTEMPTS;attemp++) {
             Grid solvedGrid = generateSolvedGrid(N);
-            if (solvedGrid == null)
-                throw new RuntimeException("Impossibile generare la griglia soluzione per puzzle di dimensione " + N);
-
-            solvedGrid.printToConsole();
-
+            if (solvedGrid == null){
+                System.err.println("Tentativo " + attemp + ": Impossibile generare la griglia soluzione per N=" + N);
+                if(attemp==DEFAULT_MAX_GENERATION_ATTEMPTS)
+                    throw new RuntimeException("Impossibile generare la griglia soluzione per puzzle di dimensione " + N);
+                continue;
+            }
 
             //Generazione delle gabbia della griglia
             List<List<Coordinates>> cagePartitions = partitionGridIntoCages(N, difficulty, allowedOperations);
@@ -84,7 +85,7 @@ public class PuzzleGenerator {
 
             if (verificationResult.isValid()) {
                 return cageDefinitions; // Puzzle valido trovato!
-            } else { // !verificationResult.isValid()
+            } else {
                 System.err.println("Puzzle generato NON è valido (nessuna soluzione trovata dal solver). Si ritenta...");
                 // Continua il loop per un altro tentativo
             }
@@ -100,10 +101,13 @@ public class PuzzleGenerator {
         for(CageDefinition def:cageDefinitions){
             Cage newCage=new Cage(def.targetValue(),def.operationType());
             for(Coordinates coord:def.cellsCoordinates()) {
-                Cell cellInPuzzle = puzzleGridToSolve.getCell(coord.row(), coord.col());
-                newCage.addCell(cellInPuzzle);
+                if (coord.row() >= 0 && coord.row() < N && coord.col() >= 0 && coord.col() < N) {
+                    Cell cellInPuzzle = puzzleGridToSolve.getCell(coord.row(), coord.col());
+                    newCage.addCell(cellInPuzzle);
+                }else System.err.println("VerifyPuzzle: Coordinata non valida " + coord + " per N=" + N + " in CageDefinition.");
             }
-            actualCage.add(newCage);
+            if(!newCage.getCellsInCage().isEmpty())
+                actualCage.add(newCage);
         }
         KenKenSolver solver=new KenKenSolver(puzzleGridToSolve,actualCage, N);
         List<Grid> solutions=solver.solve(DEFAULT_MAX_GENERATION_ATTEMPTS);
@@ -129,27 +133,25 @@ public class PuzzleGenerator {
             //Scelta operatore in base alle celle della gabbia
             if(cageSize==1){
                 chosenOperator=OperationType.NONE;
-            } else if (cageSize==2) {
-                List<OperationType>possibleOps=new ArrayList<>();
-                if (allowedOperations.contains(OperationType.ADD)) possibleOps.add(OperationType.ADD);
-                if (allowedOperations.contains(OperationType.SUB)) possibleOps.add(OperationType.SUB);
-                if (allowedOperations.contains(OperationType.MUL)) possibleOps.add(OperationType.MUL);
-                if (allowedOperations.contains(OperationType.DIV)) {
-                    int v1=valuesInCage.get(0), v2=valuesInCage.get(1);
-                    if((v1%v2==0 && v1/v2>0) || (v2%v1==0 && v2/v1>0 || v1==v2))
-                        possibleOps.add(OperationType.DIV);
-                }
-                if(possibleOps.isEmpty())
-                    chosenOperator=OperationType.ADD;
-                else chosenOperator = possibleOps.get(randomGenerator.nextInt(possibleOps.size()));
-            }
-            else{//significa che ci sono più di 2 gabbie allora solo add e mul
+            } else {
                 List<OperationType>possibleOps=new ArrayList<>();
                 if (allowedOperations.contains(OperationType.ADD)) possibleOps.add(OperationType.ADD);
                 if (allowedOperations.contains(OperationType.MUL)) possibleOps.add(OperationType.MUL);
 
+                if(cageSize==2){
+                    if(allowedOperations.contains(OperationType.SUB))possibleOps.add(OperationType.SUB);
+                    if(allowedOperations.contains(OperationType.DIV)){
+                        int v1=valuesInCage.getFirst(), v2=valuesInCage.get(1);
+                        if(v1 != 0 && v2 != 0 && ((v1 % v2 == 0) || (v2 % v1 == 0))) {
+                            possibleOps.add(OperationType.DIV);
+                        }
+                    }
+                }
                 if (possibleOps.isEmpty()) {
-                    chosenOperator = OperationType.ADD; // Fallback
+                    // Fallback se nessun operatore è adatto (improbabile se ADD è sempre possibile)
+                    // Potrebbe accadere se allowedOperations è molto restrittivo
+                    System.err.println("WARN: Nessun operatore possibile per una gabbia di dimensione " + cageSize + ". Uso ADD come fallback.");
+                    chosenOperator = OperationType.ADD; // Fallback robusto
                 } else {
                     chosenOperator = possibleOps.get(randomGenerator.nextInt(possibleOps.size()));
                 }
@@ -245,9 +247,10 @@ public class PuzzleGenerator {
 
         int minCageSizeForAddMul=2;
         int maxCageSizeForAddMul=2;
+
         if(N>3){
-            if(N>4 && (difficulty.equals(DIFFICULTY_EASY) || difficulty.equals(DIFFICULTY_MEDIUM)))maxCageSizeForAddMul=3;
-            else if(N==6 && difficulty.equals(DIFFICULTY_HARD))maxCageSizeForAddMul=5;
+            if(N>4 && (difficulty.equals(DIFFICULTY_EASY) || difficulty.equals(DIFFICULTY_MEDIUM)))minCageSizeForAddMul=3;
+            else if(N==6 && difficulty.equals(DIFFICULTY_HARD))minCageSizeForAddMul=5;
             else maxCageSizeForAddMul=4;
         }
 
@@ -260,16 +263,24 @@ public class PuzzleGenerator {
                     int targetSizeThisCage;
 
                     //Creo lista possibili operatori
-                    List<OperationType> candidateOpsForStart=new ArrayList<>(allowedOperations);
-                    if(countUnassignedCells(isCellAssigned)<2){
-                        candidateOpsForStart.remove(OperationType.SUB);
-                        candidateOpsForStart.remove(OperationType.DIV);
+                    List<OperationType> candidateOps=new ArrayList<>(allowedOperations);
+                    int unassignedCells = countUnassignedCells(isCellAssigned);
+
+                    if (unassignedCells < 2) {
+                        candidateOps.remove(OperationType.SUB);
+                        candidateOps.remove(OperationType.DIV);
                     }
 
-                    if(candidateOpsForStart.isEmpty())
-                        candidateOpsForStart.add(OperationType.NONE);
+                    //Serve a togliere la possibilità di inserire celle singole se la griglia è ancora a metà
+                    if (candidateOps.contains(OperationType.NONE) && candidateOps.size() > 1 && unassignedCells > N / 2) {
+                        candidateOps.remove(OperationType.NONE);
+                    }
+                    // Se dopo le rimozioni non resta nulla, aggiungi NONE come fallback
+                    if (candidateOps.isEmpty()) {
+                        candidateOps.add(OperationType.NONE);
+                    }
 
-                    chosenOpForThisCage=candidateOpsForStart.get(randomGenerator.nextInt(candidateOpsForStart.size()));
+                    chosenOpForThisCage = candidateOps.get(randomGenerator.nextInt(candidateOps.size()));
 
                     switch (chosenOpForThisCage){
                         case NONE: targetSizeThisCage=1; break;
@@ -278,7 +289,7 @@ public class PuzzleGenerator {
                         case ADD:
                         case MUL:
 
-                            if(minCageSizeForAddMul == maxCageSizeForAddMul)
+                            if(minCageSizeForAddMul >= maxCageSizeForAddMul)
                                 targetSizeThisCage= minCageSizeForAddMul;
                             else
                                 targetSizeThisCage=randomGenerator.nextInt((maxCageSizeForAddMul - minCageSizeForAddMul +1)+ minCageSizeForAddMul);
@@ -286,8 +297,11 @@ public class PuzzleGenerator {
                         default: throw new IllegalArgumentException("Operatore inaspettato: "+chosenOpForThisCage);
                     }
 
-                    targetSizeThisCage = Math.min(targetSizeThisCage, (N * N - countAssignedCells(isCellAssigned)));
-                    if (targetSizeThisCage <= 0) targetSizeThisCage = 1;
+                    targetSizeThisCage = Math.min(targetSizeThisCage, unassignedCells);
+                    if (chosenOpForThisCage != OperationType.NONE && targetSizeThisCage < minCageSizeForAddMul && unassignedCells >= minCageSizeForAddMul) {
+                        targetSizeThisCage = minCageSizeForAddMul; // Forza dimensione minima se possibile
+                    }
+                    if (targetSizeThisCage < 1) targetSizeThisCage = 1; // Minimo assoluto
 
                     Deque<Coordinates> queue=new ArrayDeque<>();
                     queue.offer(new Coordinates(r,c));
@@ -332,7 +346,6 @@ public class PuzzleGenerator {
                     List<Coordinates> singleCellCage = new ArrayList<>();
                     singleCellCage.add(new Coordinates(r_idx, c_idx));
                     allCageCoordinates.add(singleCellCage);
-                    // isCellAssigned[r_idx][c_idx] = true; // Non strettamente necessario qui se è l'ultimo passaggio
                     System.out.println("Aggiunta gabbia NONE di fallback per cella non coperta: (" + r_idx + "," + c_idx + ")");
                 }
             }
@@ -347,13 +360,4 @@ public class PuzzleGenerator {
                 if(!cell) unassignedCount++;
         return unassignedCount;
     }
-
-    private int countAssignedCells(boolean[][] isCellAssigned){
-        int count=0;
-        for(boolean[] row:isCellAssigned)
-            for(boolean cell:row)
-                if(cell) count++;
-        return count;
-    }
-
 }

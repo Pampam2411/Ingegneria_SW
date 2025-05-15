@@ -9,41 +9,37 @@ import java.awt.event.ActionEvent;
 
 public class NumberInputPanel extends JPanel {
 
-    private GameController gameController;
-    private GameModel gameModel; // Per sapere N e lo stato del gioco
+    private final GameController gameController;
+    private final GameModel gameModel;
 
-    private JPanel buttonPanel; // Pannello interno per i pulsanti numerici
-    private JButton clearButton;
+    private final JPanel buttonPanel;
+    private final JButton clearButton;
 
     public NumberInputPanel(GameController controller, GameModel model) {
         this.gameController = controller;
         this.gameModel = model;
 
-        setLayout(new BorderLayout(10, 5)); // Layout principale del pannello
+        setLayout(new BorderLayout(10, 5));
         setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-        // setBackground(new Color(210, 215, 220)); // Sfondo leggermente diverso
 
-        buttonPanel = new JPanel(); // Verrà popolato in updateControls
-        // Usiamo un FlowLayout per i pulsanti numerici, ma potremmo usare GridLayout
-        // per una disposizione più ordinata se N è fisso o piccolo.
-        // Per N variabile, FlowLayout è più semplice.
+        buttonPanel = new JPanel();
         buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 3, 3));
         add(buttonPanel, BorderLayout.CENTER);
 
-        clearButton = new JButton("Canc"); // Testo breve per "Cancella"
-        styleNumberButton(clearButton, true); // Stile speciale per il cancella
-        clearButton.setToolTipText("Cancella il numero dalla cella selezionata (o premi 0)");
-        clearButton.addActionListener((ActionEvent e) -> {
+        clearButton = new JButton("Delete");
+        styleNumberButton(clearButton, true);
+        clearButton.setToolTipText("Delete the number from the selected cell (or press 0)");
+        clearButton.addActionListener((ActionEvent _) -> {
             if (gameController != null) {
                 gameController.clearNumberViaButton();
             }
         });
-        JPanel clearButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT)); // Allinea a destra
+        JPanel clearButtonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         clearButtonPanel.setOpaque(false);
         clearButtonPanel.add(clearButton);
-        add(clearButtonPanel, BorderLayout.EAST); // Pulsante cancella a destra
+        add(clearButtonPanel, BorderLayout.EAST);
 
-        updateControls(); // Crea i pulsanti iniziali
+        updateControls();
     }
 
     private void styleNumberButton(JButton button, boolean isClearButton) {
@@ -76,7 +72,7 @@ public class NumberInputPanel extends JPanel {
                 JButton numButton = new JButton(String.valueOf(number));
                 styleNumberButton(numButton, false);
                 numButton.setToolTipText("Inserisci il numero " + number);
-                numButton.addActionListener((ActionEvent e) -> {
+                numButton.addActionListener((ActionEvent _) -> {
                     if (gameController != null) {
                         gameController.inputNumberViaButton(number);
                     }

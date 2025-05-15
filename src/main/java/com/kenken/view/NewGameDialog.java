@@ -14,46 +14,43 @@ public class NewGameDialog extends JDialog {
     private JButton startButton;
     private JButton cancelButton;
 
-    private int selectedN = 0; // Valore di default o indicativo di nessuna selezione valida
+    private int selectedN = 0;
     private String selectedDifficulty = null;
     private boolean confirmed = false;
 
     public NewGameDialog(Frame owner) {
-        super(owner, "Configura Nuova Partita", true); // true per modale
+        super(owner, "Set Up New Game", true);
         initComponents();
         layoutComponents();
         addListeners();
 
-        pack(); // Dimensiona il dialogo in base ai suoi contenuti
-        setResizable(false); // Impedisce il ridimensionamento
-        setLocationRelativeTo(owner); // Centra rispetto alla finestra principale
-        setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE); // Comportamento alla chiusura
+        pack();
+        setResizable(false);
+        setLocationRelativeTo(owner);
+        setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
     }
 
     private void initComponents() {
-        // Valori possibili per N (da 3 a 6 come specificato in Grid.java e PuzzleGenerator.java)
         Integer[] SIZES = {3, 4, 5, 6};
         sizeComboBox = new JComboBox<>(SIZES);
-        sizeComboBox.setSelectedItem(4); // Valore predefinito N=4, puoi cambiarlo
+        sizeComboBox.setSelectedItem(3);
 
-        // Valori per la difficoltà (dalle costanti in PuzzleGenerator)
-        // Assicurati che PuzzleGenerator.java sia compilato e accessibile
         String[] DIFFICULTIES = {
                 PuzzleGenerator.DIFFICULTY_EASY,
                 PuzzleGenerator.DIFFICULTY_MEDIUM,
                 PuzzleGenerator.DIFFICULTY_HARD
         };
         difficultyComboBox = new JComboBox<>(DIFFICULTIES);
-        difficultyComboBox.setSelectedItem(PuzzleGenerator.DIFFICULTY_EASY); // Valore predefinito
+        difficultyComboBox.setSelectedItem(PuzzleGenerator.DIFFICULTY_EASY);
 
-        startButton = new JButton("Avvia Partita");
+        startButton = new JButton("Start Game");
         startButton.setFont(new Font("Arial", Font.BOLD, 14));
         startButton.setBackground(new Color(70, 130, 180)); // Steel Blue
         startButton.setForeground(Color.WHITE);
         startButton.setFocusPainted(false);
 
 
-        cancelButton = new JButton("Annulla");
+        cancelButton = new JButton("Cancel");
         cancelButton.setFont(new Font("Arial", Font.PLAIN, 14));
     }
 
@@ -71,22 +68,21 @@ public class NewGameDialog extends JDialog {
         gbc.gridy = 0;
         gbc.anchor = GridBagConstraints.LINE_END;
         gbc.insets = new Insets(5, 5, 10, 10); // Aumentato bottom inset
-        JLabel sizeLabel = new JLabel("Dimensione Griglia (N x N):");
+        JLabel sizeLabel = new JLabel("Grid Size (N x N):");
         sizeLabel.setFont(labelFont);
         panel.add(sizeLabel, gbc);
 
         gbc.gridx = 1;
         gbc.anchor = GridBagConstraints.LINE_START;
-        gbc.fill = GridBagConstraints.HORIZONTAL; // Fa espandere il combo box
+        gbc.fill = GridBagConstraints.HORIZONTAL;
         sizeComboBox.setFont(labelFont);
         panel.add(sizeComboBox, gbc);
 
-        // Etichetta e ComboBox per Difficoltà
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.anchor = GridBagConstraints.LINE_END;
-        gbc.insets = new Insets(5, 5, 15, 10); // Aumentato bottom inset
-        JLabel difficultyLabel = new JLabel("Livello Difficoltà:");
+        gbc.insets = new Insets(5, 5, 15, 10);
+        JLabel difficultyLabel = new JLabel("Diffiulty Level:");
         difficultyLabel.setFont(labelFont);
         panel.add(difficultyLabel, gbc);
 
@@ -96,39 +92,36 @@ public class NewGameDialog extends JDialog {
         panel.add(difficultyComboBox, gbc);
 
         // Pannello per i pulsanti
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0)); // Aumentato gap tra pulsanti
-        buttonPanel.setBackground(panel.getBackground()); // Stesso sfondo del pannello principale
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
+        buttonPanel.setBackground(panel.getBackground());
         buttonPanel.add(startButton);
         buttonPanel.add(cancelButton);
 
         gbc.gridx = 0;
         gbc.gridy = 2;
-        gbc.gridwidth = 2; // Occupa entrambe le colonne
+        gbc.gridwidth = 2;
         gbc.anchor = GridBagConstraints.CENTER;
-        gbc.fill = GridBagConstraints.NONE; // Non far espandere il buttonPanel
-        gbc.insets = new Insets(20, 5, 5, 5); // Spazio sopra i pulsanti
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.insets = new Insets(20, 5, 5, 5);
         panel.add(buttonPanel, gbc);
 
-        add(panel); // Aggiunge il pannello principale al JDialog
+        add(panel);
     }
 
     private void addListeners() {
-        startButton.addActionListener((ActionEvent e) -> {
-            // Objects.requireNonNull assicura che non ci siano NullPointerExceptions
-            // anche se è improbabile con JComboBox pre-popolati.
+        startButton.addActionListener((ActionEvent _) -> {
             selectedN = (Integer) Objects.requireNonNull(sizeComboBox.getSelectedItem());
             selectedDifficulty = (String) Objects.requireNonNull(difficultyComboBox.getSelectedItem());
             confirmed = true;
-            dispose(); // Chiude il dialogo
+            dispose();
         });
 
-        cancelButton.addActionListener((ActionEvent e) -> {
+        cancelButton.addActionListener((ActionEvent _) -> {
             confirmed = false;
-            dispose(); // Chiude il dialogo
+            dispose();
         });
     }
 
-    // Metodi pubblici per ottenere i valori selezionati dalla classe chiamante (MainFrame)
     public int getSelectedN() {
         return selectedN;
     }
@@ -140,33 +133,4 @@ public class NewGameDialog extends JDialog {
     public boolean isConfirmed() {
         return confirmed;
     }
-
-    /*
-    // Metodo main di esempio per testare il dialogo separatamente.
-    // Commentalo o rimuovilo quando integri il dialogo nell'applicazione principale.
-    public static void main(String[] args) {
-        // Imposta un Look and Feel per il test, se desiderato
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        SwingUtilities.invokeLater(() -> {
-            // Per il test, passiamo null come owner. In un'app reale, sarà il MainFrame.
-            NewGameDialog dialog = new NewGameDialog(null);
-            dialog.setVisible(true); // Mostra il dialogo
-
-            // Dopo che il dialogo è stato chiuso (dall'utente), controlla i risultati
-            if (dialog.isConfirmed()) {
-                System.out.println("Partita Confermata!");
-                System.out.println("Dimensione N: " + dialog.getSelectedN());
-                System.out.println("Difficoltà: " + dialog.getSelectedDifficulty());
-            } else {
-                System.out.println("Partita Annullata.");
-            }
-            // System.exit(0); // Esce dopo il test se eseguito standalone
-        });
-    }
-    */
 }

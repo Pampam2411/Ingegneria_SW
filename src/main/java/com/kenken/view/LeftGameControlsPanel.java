@@ -13,18 +13,18 @@ import java.io.File;
 
 public class LeftGameControlsPanel extends JPanel {
 
-    private MainFrame mainFrame; // Riferimento al MainFrame per cambiare vista o mostrare dialoghi
-    private GameController gameController;
+    private final MainFrame mainFrame;
+    private final GameController gameController;
     private GameModel gameModel;
 
-    private JButton newGameButton;
-    private JButton loadGameButton;
-    private JButton saveGameButton;
-    private JButton mainMenuButton;
-    private JButton rulesButton;
-    private JButton aboutButton;
+    private final JButton newGameButton;
+    private final JButton loadGameButton;
+    private final JButton saveGameButton;
+    private final JButton mainMenuButton;
+    private final JButton rulesButton;
+    private final JButton aboutButton;
 
-    public static final String SAVE_LOAD_GAME_DIRECTORY_PATH = "C:\\Users\\lucad\\OneDrive\\Desktop\\SaveGameKenKen"; // Mantieni il tuo path
+    public static final String SAVE_LOAD_GAME_DIRECTORY_PATH = "C:\\Users\\lucad\\Desktop\\SaveGameKenKen"; // Mantieni il tuo path
 
     public LeftGameControlsPanel(MainFrame frame, GameController controller, GameModel model) {
         this.mainFrame = frame;
@@ -36,44 +36,43 @@ public class LeftGameControlsPanel extends JPanel {
                 BorderFactory.createEtchedBorder(),
                 new EmptyBorder(10, 10, 10, 10)
         ));
-        setBackground(new Color(220, 225, 230)); // Sfondo simile al pannello destro
+        setBackground(new Color(220, 225, 230));
 
-        JLabel titleLabel = new JLabel("Partita & Aiuto");
+        JLabel titleLabel = new JLabel("Game & Help");
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         add(titleLabel);
         add(Box.createRigidArea(new Dimension(0, 15)));
 
-        newGameButton = new JButton("Nuova Partita");
+        newGameButton = new JButton("New Game");
         styleControlButton(newGameButton);
-        newGameButton.setToolTipText("Inizia una nuova partita KenKen");
-        newGameButton.addActionListener((ActionEvent e) -> {
+        newGameButton.setToolTipText("Start New Game");
+        newGameButton.addActionListener((ActionEvent _) -> {
             if (mainFrame != null) {
-                // L'handler in MainFrame gestirà il dialogo e il cambio di vista
                 mainFrame.handleNewGameRequestFromMenuPanel();
             }
         });
         add(newGameButton);
         add(Box.createRigidArea(new Dimension(0, 10)));
 
-        loadGameButton = new JButton("Carica Partita");
+        loadGameButton = new JButton("Load Game");
         styleControlButton(loadGameButton);
-        loadGameButton.setToolTipText("Carica una partita salvata");
-        loadGameButton.addActionListener((ActionEvent e) -> handleLoadGameAction());
+        loadGameButton.setToolTipText("Load Saved Game");
+        loadGameButton.addActionListener((ActionEvent _) -> handleLoadGameAction());
         add(loadGameButton);
         add(Box.createRigidArea(new Dimension(0, 10)));
 
-        saveGameButton = new JButton("Salva Partita");
+        saveGameButton = new JButton("Save Game");
         styleControlButton(saveGameButton);
-        saveGameButton.setToolTipText("Salva la partita corrente");
-        saveGameButton.addActionListener((ActionEvent e) -> handleSaveGameAction());
+        saveGameButton.setToolTipText("Save Current Game");
+        saveGameButton.addActionListener((ActionEvent _) -> handleSaveGameAction());
         add(saveGameButton);
-        add(Box.createRigidArea(new Dimension(0, 20))); // Spazio maggiore
+        add(Box.createRigidArea(new Dimension(0, 20)));
 
-        mainMenuButton = new JButton("Menu Principale");
+        mainMenuButton = new JButton("Home");
         styleControlButton(mainMenuButton);
-        mainMenuButton.setToolTipText("Torna al menu principale");
-        mainMenuButton.addActionListener((ActionEvent e) -> {
+        mainMenuButton.setToolTipText("Back To Main Menu");
+        mainMenuButton.addActionListener((ActionEvent _) -> {
             if (mainFrame != null) {
                 mainFrame.switchToMenuView();
             }
@@ -81,24 +80,24 @@ public class LeftGameControlsPanel extends JPanel {
         add(mainMenuButton);
         add(Box.createRigidArea(new Dimension(0, 20)));
 
-        rulesButton = new JButton("Regole del Gioco");
+        rulesButton = new JButton("Games Rules");
         styleControlButton(rulesButton);
-        rulesButton.addActionListener(e -> {
+        rulesButton.addActionListener(_ -> {
             if (mainFrame != null) mainFrame.showGameRules();
         });
         add(rulesButton);
         add(Box.createRigidArea(new Dimension(0, 10)));
 
-        aboutButton = new JButton("Informazioni");
+        aboutButton = new JButton("About");
         styleControlButton(aboutButton);
-        aboutButton.addActionListener(e -> {
+        aboutButton.addActionListener(_ -> {
             if (mainFrame != null) mainFrame.showAboutInfo();
         });
         add(aboutButton);
 
-        add(Box.createVerticalGlue()); // Spinge i controlli in alto
+        add(Box.createVerticalGlue());
 
-        setPreferredSize(new Dimension(180, 350)); // Aggiusta la dimensione preferita
+        setPreferredSize(new Dimension(180, 350));
         setMaximumSize(new Dimension(190, Short.MAX_VALUE));
     }
 
@@ -114,21 +113,21 @@ public class LeftGameControlsPanel extends JPanel {
         if (gameController == null || gameModel == null || mainFrame == null) return;
 
         if (gameModel.getGameState() == GameModel.GameState.NOT_INITIALIZED || gameModel.getN() == 0) {
-            mainFrame.showErrorMessage("Salva Partita", "Nessuna partita attiva da salvare.");
+            mainFrame.showErrorMessage("Save Game", "No active game to save.");
             return;
         }
 
         JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Salva Partita KenKen");
-        fileChooser.setFileFilter(new FileNameExtensionFilter("File KenKen Salvati (*.ken)", "ken"));
+        fileChooser.setDialogTitle("Save Game KenKen");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("File KenKen Saved As (*.ken)", "ken"));
         File saveDir = new File(SAVE_LOAD_GAME_DIRECTORY_PATH);
         if (saveDir.exists() && saveDir.isDirectory()) {
             fileChooser.setCurrentDirectory(saveDir);
         } else {
-            System.out.println("Directory salvataggio predefinita (" + SAVE_LOAD_GAME_DIRECTORY_PATH + ") non trovata.");
+            System.out.println("Directory Save Default (" + SAVE_LOAD_GAME_DIRECTORY_PATH + ") Not Found.");
         }
-        fileChooser.setSelectedFile(new File("kenken_partita.ken"));
-        int result = fileChooser.showSaveDialog(mainFrame); // Usa mainFrame come parent
+        fileChooser.setSelectedFile(new File("kenken_game.ken"));
+        int result = fileChooser.showSaveDialog(mainFrame);
         if (result == JFileChooser.APPROVE_OPTION) {
             File fileToSave = fileChooser.getSelectedFile();
             String filePath = fileToSave.getAbsolutePath();
@@ -143,31 +142,30 @@ public class LeftGameControlsPanel extends JPanel {
         if (gameController == null || mainFrame == null) return;
 
         JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Carica Partita KenKen");
-        fileChooser.setFileFilter(new FileNameExtensionFilter("File KenKen Salvati (*.ken)", "ken"));
+        fileChooser.setDialogTitle("Load Game KenKen");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("File KenKen Saved (*.ken)", "ken"));
         File loadDir = new File(SAVE_LOAD_GAME_DIRECTORY_PATH);
         if (loadDir.exists() && loadDir.isDirectory()) {
             fileChooser.setCurrentDirectory(loadDir);
         } else {
-            System.out.println("Directory caricamento predefinita (" + SAVE_LOAD_GAME_DIRECTORY_PATH + ") non trovata.");
+            System.out.println("Directory Load Defualt (" + SAVE_LOAD_GAME_DIRECTORY_PATH + ") Not Found.");
         }
-        int result = fileChooser.showOpenDialog(mainFrame); // Usa mainFrame come parent
+        int result = fileChooser.showOpenDialog(mainFrame);
         if (result == JFileChooser.APPROVE_OPTION) {
             File selectedFile = fileChooser.getSelectedFile();
             if (gameController.loadGame(selectedFile)) {
                 if (gameModel.getGameState() != GameModel.GameState.NOT_INITIALIZED && gameModel.getN() > 0) {
-                    mainFrame.switchToGameView(); // Assicura che la vista si aggiorni
+                    mainFrame.switchToGameView();
                 } else {
-                    mainFrame.showErrorMessage("Errore Caricamento", "Impossibile visualizzare la partita dopo il caricamento.");
+                    mainFrame.showErrorMessage("Load Error", "Unable show game after loading.");
                 }
             }
-            // Se il caricamento fallisce, GameController dovrebbe aver mostrato un messaggio tramite UserFeedback (MainFrame)
         }
     }
 
 
     public void updateControlsState(GameModel model) {
-        this.gameModel = model; // Aggiorna riferimento al modello
+        this.gameModel = model;
 
         boolean isGameActiveOrInitialized = (model.getGameState() != GameModel.GameState.NOT_INITIALIZED &&
                 model.getGameState() != GameModel.GameState.ERROR &&
@@ -176,12 +174,12 @@ public class LeftGameControlsPanel extends JPanel {
                 (model.getGameState() == GameModel.GameState.PLAYING ||
                         model.getGameState() == GameModel.GameState.CONSTRAINT_VIOLATION);
 
-        if (newGameButton != null) newGameButton.setEnabled(true); // Sempre abilitato
-        if (loadGameButton != null) loadGameButton.setEnabled(true); // Sempre abilitato
+        if (newGameButton != null) newGameButton.setEnabled(true);
+        if (loadGameButton != null) loadGameButton.setEnabled(true);
         if (saveGameButton != null) saveGameButton.setEnabled(isGamePlaying);
-        if (mainMenuButton != null) mainMenuButton.setEnabled(true); // Sempre abilitato
-        if (rulesButton != null) rulesButton.setEnabled(true); // Sempre abilitato
-        if (aboutButton != null) aboutButton.setEnabled(true); // Sempre abilitato
+        if (mainMenuButton != null) mainMenuButton.setEnabled(true);
+        if (rulesButton != null) rulesButton.setEnabled(true);
+        if (aboutButton != null) aboutButton.setEnabled(true);
     }
 
 }

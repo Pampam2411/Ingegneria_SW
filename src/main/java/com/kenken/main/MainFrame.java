@@ -12,12 +12,11 @@ import java.io.File;
 public class MainFrame extends JFrame implements GameObserver, UserFeedback {
 
     private GameModel gameModel;
-    private GameController gameController;
+    private final GameController gameController;
 
-    private JPanel mainPanelContainer;
-    private CardLayout cardLayout;
-    private MenuPanel menuPanel;
-    private GameViewPanel gameViewPanel;
+    private final JPanel mainPanelContainer;
+    private final CardLayout cardLayout;
+    private final GameViewPanel gameViewPanel;
     private static final String MENU_PANEL_ID = "MENU_PANEL";
     private static final String GAME_PANEL_ID = "GAME_PANEL";
 
@@ -32,10 +31,9 @@ public class MainFrame extends JFrame implements GameObserver, UserFeedback {
         cardLayout = new CardLayout();
         mainPanelContainer = new JPanel(cardLayout);
 
-        menuPanel = new MenuPanel(
+        MenuPanel menuPanel = new MenuPanel(
                 this::handleNewGameRequestFromMenuPanel,
                 this::handleLoadGameRequestFromMenuPanel,
-                this::handleSettingsRequest,
                 () -> System.exit(0)
         );
         mainPanelContainer.add(menuPanel, MENU_PANEL_ID);
@@ -69,17 +67,17 @@ public class MainFrame extends JFrame implements GameObserver, UserFeedback {
 
     public void switchToGameView() {
         if (gameModel.getGameState() == GameModel.GameState.NOT_INITIALIZED || gameModel.getN() == 0) {
-            showErrorMessage("Gioco non Pronto", "Nessuna partita valida inizializzata.\nConfigura una nuova partita.");
-            switchToMenuView(); // Assicura che si torni al menu
+            showErrorMessage("Game not Ready", "Set Up New Game First.");
+            switchToMenuView();
             return;
         }
-        setJMenuBar(null); // Assicura che non ci sia JMenuBar
+        setJMenuBar(null);
         gameViewPanel.updatePanelState(this.gameModel);
         GridPanel currentGridPanel = gameViewPanel.getGridPanel();
         if (currentGridPanel != null) {
             currentGridPanel.resetSelection();
             currentGridPanel.requestFocusInWindow();
-        } else if (gameViewPanel != null) {
+        } else {
             gameViewPanel.requestFocusInWindow();
         }
         cardLayout.show(mainPanelContainer, GAME_PANEL_ID);
@@ -97,9 +95,7 @@ public class MainFrame extends JFrame implements GameObserver, UserFeedback {
         repaint();
     }
 
-    // Questi handler sono ora chiamati dai pulsanti nel LeftGameControlsPanel
-    // Il MainFrame li espone perché LeftGameControlsPanel ha un riferimento a MainFrame
-    public void handleNewGameRequestFromMenuPanel() { // Rinominato per chiarezza, ma la logica è la stessa
+    public void handleNewGameRequestFromMenuPanel() {
         NewGameDialog newGameDialog = new NewGameDialog(this);
         newGameDialog.setVisible(true);
         if (newGameDialog.isConfirmed()) {
@@ -111,52 +107,45 @@ public class MainFrame extends JFrame implements GameObserver, UserFeedback {
                     gameModel.getN() > 0) {
                 switchToGameView();
             } else {
-                // L'errore specifico dovrebbe essere già stato mostrato dal GameController
-                switchToMenuView(); // Assicura che si torni al menu
+                switchToMenuView();
             }
         }
     }
 
-    public void handleLoadGameRequestFromMenuPanel() { // Rinominato per chiarezza
+    public void handleLoadGameRequestFromMenuPanel() {
         JFileChooser fileChooser = new JFileChooser();
-        // ... (logica JFileChooser come prima, ma ora chiamata da LeftGameControlsPanel) ...
-        // Imposta la directory di caricamento predefinita
-        File loadDir = new File(LeftGameControlsPanel.SAVE_LOAD_GAME_DIRECTORY_PATH); // Usa la costante da LeftGameControlsPanel
+        File loadDir = new File(LeftGameControlsPanel.SAVE_LOAD_GAME_DIRECTORY_PATH);
         if (loadDir.exists() && loadDir.isDirectory()) {
             fileChooser.setCurrentDirectory(loadDir);
         }
-        // ...
         if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             File selectedFile = fileChooser.getSelectedFile();
             if (gameController.loadGame(selectedFile)) {
                 if (gameModel.getGameState() != GameModel.GameState.NOT_INITIALIZED && gameModel.getN() > 0) {
                     switchToGameView();
                 } else {
-                    showErrorMessage("Errore Caricamento", "Impossibile visualizzare la partita dopo il caricamento.");
+                    showErrorMessage("Loading Error", "Unable to view game after loading.");
                 }
             }
         }
     }
 
-    // Questo metodo è per il pulsante "Impostazioni" nel MenuPanel iniziale
-    public void handleSettingsRequest() {
-        showInfoMessage("Impostazioni", "Funzionalità 'Impostazioni' non ancora implementata.");
-    }
-
-    // Questi metodi sono per i pulsanti "Regole" e "Informazioni" nel LeftGameControlsPanel
     public void showGameRules() {
-        String rules = "Regole del KenKen:\n\n" +
-                "1. Completa la griglia con numeri da 1 a N.\n" +
-                "2. Non ripetere numeri nella stessa riga o colonna.\n" +
-                "3. Ogni 'gabbia' ha un 'target' e un'operazione.\n" +
-                "4. I numeri in una gabbia devono produrre il target.\n" +
-                "5. I numeri possono ripetersi in una gabbia (non su stessa riga/colonna).";
-        showInfoMessage("Regole del Gioco KenKen", rules);
+        String rules = """
+                How to Play KenKen:
+                
+                1. Use numbers for 1 to N (grid size).
+                2. Never use the same number for row or column.
+                3. Each cage has an operation (+,-,*,/) and a target result.
+                4. Numbers in a cage must achieve the target using the given operation.
+                5. Repeated numbers are okay within a cage.
+                """;
+        showInfoMessage("Game Rules", rules);
     }
 
     public void showAboutInfo() {
-        String about = "KenKen Puzzle Game\nVersione: 1.0 (Dev)";
-        showInfoMessage("Informazioni su KenKen Puzzle", about);
+        String about = "KenKen Puzzle Game\nVersion: 1.0 (Dev)";
+        showInfoMessage("About KenKen Puzzle", about);
     }
 
     @Override
@@ -170,12 +159,9 @@ public class MainFrame extends JFrame implements GameObserver, UserFeedback {
             gameViewPanel.updatePanelState(this.gameModel);
         }
 
-        // Non c'è più una JMenuBar di gioco da aggiornare,
-        // lo stato dei controlli è gestito dai pannelli laterali.
 
-        // Aggiorna il titolo della finestra
         if (gameController != null && gameController.getTotalSolutionsFound() > 0 && gameModel.getGameState() == GameModel.GameState.SOLVED) {
-            setTitle("KenKen Puzzle - Soluzione " + (gameController.getCurrentSolutionIndex() + 1) + " di " + gameController.getTotalSolutionsFound());
+            setTitle("KenKen Puzzle - Solution " + (gameController.getCurrentSolutionIndex() + 1) + " of " + gameController.getTotalSolutionsFound());
         } else if (gameModel.getN() > 0 && gameModel.getGameState() != GameModel.GameState.NOT_INITIALIZED && gameModel.getGameState() != GameModel.GameState.ERROR) {
             setTitle("KenKen Puzzle - " + gameModel.getN() + "x" + gameModel.getN() + " (" + gameModel.getDifficulty() + ")");
         } else {
@@ -184,7 +170,6 @@ public class MainFrame extends JFrame implements GameObserver, UserFeedback {
     }
 
     public static void main(String[] args) {
-        // ... (codice LookAndFeel e avvio come prima) ...
         try {
             for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
                 if ("Nimbus".equals(info.getName())) {
@@ -194,7 +179,7 @@ public class MainFrame extends JFrame implements GameObserver, UserFeedback {
             }
         } catch (Exception e) {
             try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); }
-            catch (Exception ex) { System.err.println("Errore Look and Feel: " + ex.getMessage()); }
+            catch (Exception ex) { System.err.println("Error Look and Feel: " + ex.getMessage()); }
         }
         GameModel model = new GameModel();
         SwingUtilities.invokeLater(() -> {

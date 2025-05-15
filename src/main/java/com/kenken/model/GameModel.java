@@ -3,11 +3,7 @@ package com.kenken.model;
 import com.kenken.model.dto.CageDefinition;
 import com.kenken.model.dto.Coordinates;
 
-import java.util.ArrayList;
-import java.util.HashSet; // Importa HashSet
-import java.util.List;
-import java.util.Map;
-import java.util.Set; // Importa Set
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class GameModel {
@@ -19,9 +15,10 @@ public class GameModel {
 
     private String difficulty;
     private boolean realTimeValidationEnabled = false;
-    private Set<Coordinates> violatingCells; // Nuovo: per tracciare le celle in errore
+    private final Set<Coordinates> violatingCells; // Nuovo: per tracciare le celle in errore
 
     public enum GameState { NOT_INITIALIZED, PLAYING, CONSTRAINT_VIOLATION, SOLVED, ERROR }
+
     private GameState gameState;
 
     public GameModel() {
@@ -124,7 +121,6 @@ public class GameModel {
     }
 
     public boolean placeNumber(int row, int col, int value) {
-        // ... (controlli iniziali su stato gioco, valore, editabilità come prima) ...
         if (this.grid == null || this.N == 0 || this.gameState == GameState.NOT_INITIALIZED) {
             throw new IllegalStateException("Il modello non è ancora inizializzato.");
         }
@@ -143,35 +139,113 @@ public class GameModel {
         this.gameState = GameState.PLAYING; // Stato temporaneo
 
         if (this.realTimeValidationEnabled) {
-            boolean isRowValid = true;
-            boolean isColValid = true;
-            boolean isCageConstraintMet = true;
+            performSingleCellValidation(row, col, value);
+        }
 
-            // Controlla unicità riga
-            for (int c = 0; c < this.N; c++) {
-                if (c != col && this.grid.getCell(row, c).getValue() == value) {
-                    isRowValid = false;
-                    violatingCells.add(new Coordinates(row, col)); // Cella corrente
-                    violatingCells.add(new Coordinates(row, c));   // Cella duplicata
-                    break;
+        boolean isGridNowFull = isGridFull();
+        System.out.println("GameModel.placeNumber: isGridNowFull = " + isGridNowFull);
+
+        if (isGridNowFull) {
+            System.out.println("GameModel: Griglia completata. Eseguo validazione globale.");
+            performGlobalValidation();
+            System.out.println("GameModel.placeNumber: Stato dopo performGlobalValidation: " + this.gameState);
+        } else {
+            System.out.println("GameModel.placeNumber: Griglia non piena. Stato attuale: " + this.gameState);
+        }
+
+        notifyObservers();
+        return true;
+    }
+
+    private void performSingleCellValidation(int row, int col, int newValue) {
+        // violatingCells è già stato svuotato in placeNumber
+        boolean violationFound = false;
+
+        for (int c = 0; c < this.N; c++) {
+            if (c != col && this.grid.getCell(row, c).getValue() == newValue && newValue != 0) {
+                violationFound = true;
+                violatingCells.add(new Coordinates(row, col)); violatingCells.add(new Coordinates(row, c));
+            }
+        }
+        for (int r = 0; r < this.N; r++) {
+            if (r != row && this.grid.getCell(r, col).getValue() == newValue && newValue != 0) {
+                violationFound = true;
+                violatingCells.add(new Coordinates(row, col)); violatingCells.add(new Coordinates(r, col));
+            }
+        }
+
+        Cell currentCell = this.grid.getCell(row, col);
+        Cage parentCage = currentCell.getParentCage();
+        if (parentCage != null) {
+            boolean allCellsInCageFilled = true;
+            for (Cell cellInCage : parentCage.getCellsInCage()) if (cellInCage.isEmpty()) {allCellsInCageFilled = false; break;}
+            if (allCellsInCageFilled) {
+                try {
+                    if (!parentCage.checkConstraint()) {
+                        violationFound = true;
+                        for (Cell cellInCage : parentCage.getCellsInCage()) violatingCells.add(new Coordinates(cellInCage.getRow(), cellInCage.getCol()));
+                    }
+                } catch (IllegalArgumentException e) {
+                    violationFound = true;
+                    for (Cell cellInCage : parentCage.getCellsInCage()) violatingCells.add(new Coordinates(cellInCage.getRow(), cellInCage.getCol()));
                 }
             }
+        }
 
-            // Controlla unicità colonna
-            for (int r = 0; r < this.N; r++) {
-                if (r != row && this.grid.getCell(r, col).getValue() == value) {
-                    isColValid = false;
-                    violatingCells.add(new Coordinates(row, col)); // Cella corrente
-                    violatingCells.add(new Coordinates(r, col));   // Cella duplicata
-                    break;
+        if (violationFound) {
+            this.gameState = GameState.CONSTRAINT_VIOLATION;
+        } else {
+            // Se nessuna violazione è stata trovata da questa specifica mossa,
+            // e lo stato era PLAYING, rimane PLAYING.
+            // Se era CONSTRAINT_VIOLATION, e questa mossa ha risolto TUTTE le violazioni
+            // (cosa che questo metodo da solo non può garantire, serve una rivalutazione globale
+            // se vogliamo che CONSTRAINT_VIOLATION torni a PLAYING solo con una singola mossa correttiva),
+            // per ora lo lasciamo a PLAYING. Una successiva validazione globale lo sistemerebbe.
+            // La logica più semplice è: se questa mossa non crea errori, lo stato è PLAYING.
+            this.gameState = GameState.PLAYING;
+        }
+        System.out.println("GameModel.performSingleCellValidation: Stato dopo validazione singola cella: " + this.gameState); // DEBUG
+    }
+
+    public void performGlobalValidation() {
+        if (this.grid == null || this.N == 0 || this.gameState == GameState.NOT_INITIALIZED || this.gameState == GameState.ERROR) {
+            System.out.println("GameModel.performGlobalValidation: Validazione non applicabile allo stato attuale.");
+            return;
+        }
+        this.violatingCells.clear();
+        boolean anyViolationFound = false;
+        boolean isGridFull = true;
+
+        for (int r = 0; r < N; r++) {
+            for (int c = 0; c < N; c++) {
+                Cell currentCell = grid.getCell(r, c);
+                if (currentCell.isEmpty()) {
+                    isGridFull = false;
+                    continue;
+                }
+                int currentValue = currentCell.getValue();
+                for (int c2 = 0; c2 < N; c2++) {
+                    if (c2 != c && grid.getCell(r, c2).getValue() == currentValue) {
+                        anyViolationFound = true;
+                        violatingCells.add(new Coordinates(r, c));
+                        violatingCells.add(new Coordinates(r, c2));
+                    }
+                }
+                for (int r2 = 0; r2 < N; r2++) {
+                    if (r2 != r && grid.getCell(r2, c).getValue() == currentValue) {
+                        anyViolationFound = true;
+                        violatingCells.add(new Coordinates(r, c));
+                        violatingCells.add(new Coordinates(r2, c));
+                    }
                 }
             }
+        }
 
-            // Controlla vincolo gabbia (se piena)
-            Cage parentCage = cell.getParentCage();
-            if (parentCage != null) {
+        if (this.cages != null) {
+            for (Cage cage : this.cages) {
                 boolean allCellsInCageFilled = true;
-                for (Cell cellInCage : parentCage.getCellsInCage()) {
+                if (cage.getCellsInCage().isEmpty()) continue;
+                for (Cell cellInCage : cage.getCellsInCage()) {
                     if (cellInCage.isEmpty()) {
                         allCellsInCageFilled = false;
                         break;
@@ -179,41 +253,35 @@ public class GameModel {
                 }
                 if (allCellsInCageFilled) {
                     try {
-                        if (!parentCage.checkConstraint()) {
-                            isCageConstraintMet = false;
-                            // Aggiungi tutte le celle della gabbia come "violating"
-                            for (Cell cellInCage : parentCage.getCellsInCage()) {
+                        if (!cage.checkConstraint()) {
+                            anyViolationFound = true;
+                            for (Cell cellInCage : cage.getCellsInCage()) {
                                 violatingCells.add(new Coordinates(cellInCage.getRow(), cellInCage.getCol()));
                             }
                         }
                     } catch (IllegalArgumentException e) {
-                        System.err.println("GameModel: Errore validazione gabbia " + parentCage.getCageId() + ": " + e.getMessage());
-                        isCageConstraintMet = false;
-                        for (Cell cellInCage : parentCage.getCellsInCage()) {
+                        System.err.println("GameModel.performGlobalValidation: Errore nel vincolo della gabbia " + cage.getCageId() + ": " + e.getMessage());
+                        anyViolationFound = true;
+                        for (Cell cellInCage : cage.getCellsInCage()) {
                             violatingCells.add(new Coordinates(cellInCage.getRow(), cellInCage.getCol()));
                         }
                     }
                 }
             }
+        }
 
-            if (!isRowValid || !isColValid || !isCageConstraintMet) {
-                System.out.println("GameModel: Violazione vincolo. Riga: " + isRowValid + ", Col: " + isColValid + ", Gabbia: " + isCageConstraintMet);
-                this.gameState = GameState.CONSTRAINT_VIOLATION;
+        if (anyViolationFound) {
+            this.gameState = GameState.CONSTRAINT_VIOLATION;
+        } else {
+            if (isGridFull) {
+                this.gameState = GameState.SOLVED;
+                System.out.println("GameModel: Validazione Globale - Gioco RISOLTO!");
             } else {
-                // Se non ci sono violazioni, lo stato rimane PLAYING (o diventa SOLVED)
-                // e violatingCells è già stato svuotato all'inizio del metodo.
+                this.gameState = GameState.PLAYING;
             }
         }
-
-        // Se non ci sono violazioni E il gioco è risolto, cambia stato
-        if (this.gameState != GameState.CONSTRAINT_VIOLATION && isGameEffectivelySolved()) {
-            this.gameState = GameState.SOLVED;
-            this.violatingCells.clear(); // Nessuna violazione se risolto
-            System.out.println("GameModel: Gioco RISOLTO!");
-        }
-
-        notifyObservers();
-        return true;
+        // Non chiamare notifyObservers() qui, sarà chiamato dal metodo che invoca performGlobalValidation
+        // o da placeNumber() se è il contesto.
     }
 
     public void clearCell(int row, int col) {
@@ -239,24 +307,26 @@ public class GameModel {
         }
     }
 
-    /**
-     * Restituisce l'insieme delle coordinate delle celle che attualmente violano un vincolo.
-     * Questo set è popolato solo se realTimeValidationEnabled è true e gameState è CONSTRAINT_VIOLATION.
-     * @return Un Set di Coordinates; può essere vuoto.
-     */
+    public boolean isGridFull() {
+        if (this.grid == null || this.N == 0) return false;
+        for (int r = 0; r < N; r++) {
+            for (int c = 0; c < N; c++) {
+                if (grid.getCell(r, c).isEmpty()) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     public Set<Coordinates> getViolatingCells() {
         return violatingCells;
     }
 
-    // ... (tutti gli altri metodi: addObserver, removeObserver, notifyObservers, isNumberUniqueInRow, ecc. come prima)
     public void addObserver(GameObserver observer) {
         if (observer != null && !this.observers.contains(observer)) {
             this.observers.add(observer);
         }
-    }
-
-    public void removeObserver(GameObserver observer) {
-        this.observers.remove(observer);
     }
 
     public void notifyObservers() {
@@ -264,59 +334,6 @@ public class GameModel {
         for (GameObserver observer : observersCopy) {
             observer.update(this);
         }
-    }
-    private boolean isNumberUniqueInRow(int row, int value, int excludeCol) {
-        if (this.grid == null || this.N == 0) return true;
-        for (int c = 0; c < this.N; c++) {
-            if (c == excludeCol) continue;
-            if (this.grid.getCell(row, c).getValue() == value) return false;
-        }
-        return true;
-    }
-
-    private boolean isNumberUniqueInCol(int col, int value, int excludeRow) {
-        if (this.grid == null || this.N == 0) return true;
-        for (int r = 0; r < this.N; r++) {
-            if (r == excludeRow) continue;
-            if (this.grid.getCell(r, col).getValue() == value) return false;
-        }
-        return true;
-    }
-
-    public boolean isGameEffectivelySolved() {
-        if (this.grid == null || this.N == 0) return false;
-        for (int r = 0; r < this.N; r++) {
-            for (int c = 0; c < this.N; c++) {
-                if (grid.getCell(r, c).isEmpty()) return false;
-            }
-        }
-        for (int r = 0; r < this.N; r++) {
-            boolean[] seenInRow = new boolean[this.N + 1];
-            for (int c = 0; c < this.N; c++) {
-                int val = grid.getCell(r, c).getValue();
-                if (val == 0 || (val > 0 && seenInRow[val])) return false;
-                if (val > 0) seenInRow[val] = true;
-            }
-        }
-        for (int c = 0; c < this.N; c++) {
-            boolean[] seenInCol = new boolean[this.N + 1];
-            for (int r = 0; r < this.N; r++) {
-                int val = grid.getCell(r, c).getValue();
-                if (val == 0 || (val > 0 && seenInCol[val])) return false;
-                if (val > 0) seenInCol[val] = true;
-            }
-        }
-        if (this.cages != null) {
-            for (Cage cage : this.cages) {
-                try {
-                    if (!cage.checkConstraint()) return false;
-                } catch (IllegalArgumentException e) {
-                    System.err.println("GameModel.isGameEffectivelySolved: Errore vincolo gabbia " + cage.getCageId() + ": " + e.getMessage());
-                    return false;
-                }
-            }
-        }
-        return true;
     }
 
     public void setGridValuesFromSolution(Grid solutionGrid) {
@@ -431,10 +448,15 @@ public class GameModel {
     }
 
     public Grid getGrid() { return this.grid; }
+
     public List<Cage> getCages() { return this.cages; }
+
     public int getN() { return this.N; }
+
     public GameState getGameState() { return this.gameState; }
+
     public String getDifficulty() { return this.difficulty; }
+
     public boolean isRealTimeValidationEnabled() { return this.realTimeValidationEnabled; }
 
     public Cell getCell(int row, int col) {
@@ -454,10 +476,6 @@ public class GameModel {
                 if (this.gameState == GameState.CONSTRAINT_VIOLATION) {
                     this.gameState = GameState.PLAYING; // Torna a PLAYING
                 }
-            } else {
-                // Se viene attivata, potremmo voler rivalutare l'intera griglia,
-                // ma questo è complesso. Per ora, si applicherà ai nuovi inserimenti.
-                // Se lo stato era CONSTRAINT_VIOLATION, rimane tale finché non si fa una mossa.
             }
             notifyObservers();
         }
