@@ -94,7 +94,7 @@ public class GameController {
         }
     }
 
-    public void solvePuzzle() {
+    public void solvePuzzle(int numSolution) {
         System.out.println("GameController: Richiesta Risoluzione Puzzle.");
         if (gameModel.getGameState() == GameModel.GameState.NOT_INITIALIZED || gameModel.getN() == 0) {
             if (userFeedback != null) userFeedback.showErrorMessage("Error", "No active game to resolve.");
@@ -103,8 +103,9 @@ public class GameController {
         clearFoundSolutions();
         setActiveCellFromGrid(null);
         KenKenSolver solver = new KenKenSolver(gameModel.getGrid(), gameModel.getCages(), gameModel.getN());
-        System.out.println("GameController: Avvio KenKenSolver per trovare max " + DEFAULT_MAX_SOLUTIONS_TO_FIND + " soluzioni...");
-        this.foundSolutions = solver.solve(DEFAULT_MAX_SOLUTIONS_TO_FIND);
+        if(numSolution<0 || numSolution>DEFAULT_MAX_SOLUTIONS_TO_FIND)numSolution=DEFAULT_MAX_SOLUTIONS_TO_FIND;
+        System.out.println("GameController: Avvio KenKenSolver per trovare max " + numSolution + " soluzioni...");
+        this.foundSolutions = solver.solve(numSolution);
 
         if (this.foundSolutions != null && !this.foundSolutions.isEmpty()) {
             this.currentSolutionIndex = 0;

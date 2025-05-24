@@ -36,7 +36,24 @@ public class RightGameControlsPanel extends JPanel {
 
         solveButton = new JButton("Solve Puzzle");
         styleControlButton(solveButton);
-        solveButton.addActionListener(_ -> { if (gameController != null) gameController.solvePuzzle(); });
+        solveButton.addActionListener(_ -> { if (gameController != null){
+            String input = JOptionPane.showInputDialog(
+                    RightGameControlsPanel.this,
+                    "Enter the number of solutions to find:",
+                    "Solve Options",
+                    JOptionPane.QUESTION_MESSAGE
+            );
+            try {
+                int numSolutions = Integer.parseInt(input);
+                gameController.solvePuzzle(numSolutions);
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(
+                        RightGameControlsPanel.this,
+                        "Invalid number entered.",
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE
+                );
+            }        } });
         add(solveButton);
         add(Box.createRigidArea(new Dimension(0, 10)));
 

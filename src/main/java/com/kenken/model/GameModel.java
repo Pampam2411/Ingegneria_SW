@@ -120,11 +120,11 @@ public class GameModel {
         notifyObservers();
     }
 
-    public boolean placeNumber(int row, int col, int value) {
+    public void placeNumber(int row, int col, int value) {
         if (this.grid == null || this.N == 0 || this.gameState == GameState.NOT_INITIALIZED) {
             throw new IllegalStateException("Il modello non è ancora inizializzato.");
         }
-        if (this.gameState == GameState.SOLVED || this.gameState == GameState.ERROR) return false;
+        if (this.gameState == GameState.SOLVED || this.gameState == GameState.ERROR) return;
         if (value < 1 || value > this.N) {
             throw new IllegalArgumentException("Valore: " + value + " non valido. Deve essere tra 1 e " + this.N);
         }
@@ -154,7 +154,6 @@ public class GameModel {
         }
 
         notifyObservers();
-        return true;
     }
 
     private void performSingleCellValidation(int row, int col, int newValue) {
