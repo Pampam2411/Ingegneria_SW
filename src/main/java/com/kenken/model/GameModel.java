@@ -396,7 +396,7 @@ public class GameModel {
         if (memento == null) {
             throw new IllegalArgumentException("Il memento non può essere null.");
         }
-        this.violatingCells.clear(); // Svuota le violazioni quando si carica
+        this.violatingCells.clear();
         if (memento.N() == 0 && memento.gameState() == GameState.NOT_INITIALIZED) {
             this.N = 0; this.cages = new ArrayList<>(); this.grid = null;
             this.gameState = GameState.NOT_INITIALIZED;
@@ -406,7 +406,7 @@ public class GameModel {
             notifyObservers();
             return;
         }
-        // ... (resto del metodo restoreFromMemento come prima, assicurati che sia robusto) ...
+
         if (memento.N() < 3 || memento.N() > 6 || memento.cageDefinitions() == null || memento.cellValues() == null || memento.cellEditability() == null) {
             System.err.println("GameModel.restoreFromMemento: Memento non valido o corrotto.");
             this.gameState = GameState.ERROR; this.difficulty = "ERROR_MEMENTO";
