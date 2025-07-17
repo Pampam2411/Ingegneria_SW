@@ -15,7 +15,7 @@ public class GameModel {
 
     private String difficulty;
     private boolean realTimeValidationEnabled = false;
-    private final Set<Coordinates> violatingCells; // Nuovo: per tracciare le celle in errore
+    private final Set<Coordinates> violatingCells;
 
     public enum GameState { NOT_INITIALIZED, PLAYING, CONSTRAINT_VIOLATION, SOLVED, ERROR }
 
@@ -32,7 +32,6 @@ public class GameModel {
     }
 
     public void initializeGame(int N, String difficulty, List<CageDefinition> cageDefinitions, Map<Coordinates, Integer> fixedNumbersFromExternal) {
-        // ... (inizio del metodo initializeGame come prima) ...
         if (N == 0 && (difficulty != null && difficulty.startsWith("ERROR"))) {
             this.N = 0;
             this.difficulty = difficulty;
@@ -44,7 +43,6 @@ public class GameModel {
             notifyObservers();
             return;
         }
-        // ... (controlli su N e cageDefinitions come prima) ...
         if (N < 3 || N > 6) {
             this.N = 0; this.difficulty = "INVALID_N"; this.gameState = GameState.ERROR;
             this.violatingCells.clear(); notifyObservers(); return;
@@ -62,7 +60,6 @@ public class GameModel {
         this.violatingCells.clear(); // Svuota all'inizio di una nuova partita
         this.gameState = GameState.PLAYING;
 
-        // ... (popolamento gabbie e verifica allCellsAssigned come prima) ...
         for (CageDefinition def : cageDefinitions) {
             if (def == null || def.cellsCoordinates() == null || def.cellsCoordinates().isEmpty()) continue;
             Cage cage = new Cage(def.targetValue(), def.operationType());
@@ -110,12 +107,6 @@ public class GameModel {
             }
         }
         if (noneCagesSet > 0) System.out.println("GameModel: Impostati " + noneCagesSet + " valori fissi per gabbie NONE.");
-
-        // Impostazione numeri fissi da mappa esterna
-        if (fixedNumbersFromExternal != null && !fixedNumbersFromExternal.isEmpty()) {
-            // ... (logica come prima) ...
-        }
-
         System.out.println("GameModel: Nuova partita " + N + "x" + N + " (" + difficulty + ") inizializzata. Stato: " + this.gameState);
         notifyObservers();
     }
@@ -279,8 +270,6 @@ public class GameModel {
                 this.gameState = GameState.PLAYING;
             }
         }
-        // Non chiamare notifyObservers() qui, sarà chiamato dal metodo che invoca performGlobalValidation
-        // o da placeNumber() se è il contesto.
     }
 
     public void clearCell(int row, int col) {
@@ -296,12 +285,6 @@ public class GameModel {
             cell.clearValue();
             this.gameState = GameState.PLAYING; // Torna a PLAYING
             this.violatingCells.clear();       // Svuota le celle in errore
-
-            // Opzionale: Se la validazione in tempo reale è attiva, potremmo
-            // voler rivalutare l'intera griglia per vedere se la cancellazione
-            // ha risolto una violazione che coinvolgeva altre celle.
-            // Per ora, la semplice cancellazione e il reset a PLAYING sono sufficienti.
-            // Una successiva immissione di numero rieseguirà la validazione.
             notifyObservers();
         }
     }
